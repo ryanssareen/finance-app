@@ -91,6 +91,9 @@ export default function App() {
   // Contact Form States
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [showOverspendingWarning, setShowOverspendingWarning] = useState(false);
+  
+  // Save Success State
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   const currencySymbol = currencies.find(c => c.code === currency)?.symbol || '$';
 
@@ -241,6 +244,12 @@ export default function App() {
         [field]: value
       }
     }));
+  };
+
+  const handleSaveIncomeSource = () => {
+    // Data is already saved via useEffect, just show success message
+    setShowSaveSuccess(true);
+    setTimeout(() => setShowSaveSuccess(false), 3000);
   };
 
   // Transactions
@@ -2318,6 +2327,24 @@ export default function App() {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Save Button */}
+                      <div className="mt-8 flex items-center gap-4">
+                        <button
+                          onClick={handleSaveIncomeSource}
+                          className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 rounded-lg font-bold transition shadow-lg flex items-center gap-2"
+                        >
+                          <CheckSquare className="w-5 h-5" />
+                          Save Changes
+                        </button>
+                        
+                        {showSaveSuccess && (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-500">
+                            <CheckSquare className="w-5 h-5" />
+                            <span className="font-semibold">Saved successfully!</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Analytics for this income source */}
