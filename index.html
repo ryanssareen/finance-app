@@ -1,33 +1,12 @@
-    
-    function App() {
-      const [currentUser, setCurrentUser] = useState(null);
-      const [currentPage, setCurrentPage] = useState('dashboard');
-      const [theme, setTheme] = useState('dark');
-      const [language, setLanguage] = useState('en');
-      const [isLogin, setIsLogin] = useState(true);
-      const [username, setUsername] = useState('');
-      const [password, setPassword] = useState('');
-      const [transactions, setTransactions] = useState([]);
-      const [showTransactionForm, setShowTransactionForm] = useState(false);
-      const [transactionForm, setTransactionForm] = useState({
-        type: 'income', amount: '', label: '', date: new Date().toISOString().split('T')[0]
-      });
-      const [businessRecords, setBusinessRecords] = useState([]);
-      const [showBusinessForm, setShowBusinessForm] = useState(false);
-      const [businessForm, setBusinessForm] = useState({
-        type: 'profit', amount: '', label: '', taxRate: 0, date: new Date().toISOString().split('T')[0]
-      });
-      const [investments, setInvestments] = useState([]);
-      const [showInvestmentForm, setShowInvestmentForm] = useState(false);
-      const [investmentForm, setInvestmentForm] = useState({
-        type: 'sip', amount: '', label: '', duration: 12, returnRate: 12, inflationRate: 6
-      });
-
-      useEffect(() => {
-        const savedUser = localStorage.getItem('financeAppUser');
-        if (savedUser) setCurrentUser(JSON.parse(savedUser));
-        const savedTheme = localStorage.getItem('financeAppTheme');
-        if (savedTheme) setTheme(savedTheme);
-        const savedLanguage = localStorage.getItem('financeAppLanguage');
-        if (savedLanguage) setLanguage(savedLanguage);
-      }, []);
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance Manager</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
