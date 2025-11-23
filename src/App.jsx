@@ -453,7 +453,18 @@ export default function App() {
                 </span>
               </div>
               <div className="hidden md:flex space-x-8">
-                <button onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>Features</button>
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('features-section');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }} 
+                  className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}
+                >
+                  Features
+                </button>
                 <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>Contact</button>
                 <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition">
                   Get Started
@@ -469,7 +480,19 @@ export default function App() {
         {mobileMenuOpen && (
           <div className={`${cardBg} border-b ${borderColor} md:hidden`}>
             <div className="px-4 py-3 space-y-2">
-              <button onClick={() => { setMobileMenuOpen(false); document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' }); }} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>Features</button>
+              <button 
+                onClick={(e) => { 
+                  e.preventDefault();
+                  setMobileMenuOpen(false); 
+                  const element = document.getElementById('features-section');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }} 
+                className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}
+              >
+                Features
+              </button>
               <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>Contact</button>
               <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white w-full px-4 py-2 rounded-lg hover:bg-emerald-600">
                 Get Started
