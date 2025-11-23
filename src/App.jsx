@@ -67,6 +67,12 @@ export default function App() {
   const [previousCurrency, setPreviousCurrency] = useState('USD');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // AI Assistant
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  
   // Transactions & Categories
   const [transactions, setTransactions] = useState([]);
   const [showTransactionForm, setShowTransactionForm] = useState(false);
@@ -413,6 +419,105 @@ export default function App() {
       if (saved) setBusinessRecords(JSON.parse(saved));
     }
   }, [currentUser]);
+
+  // AI Chat Handler
+  const handleAIChat = async (message, documentFile = null) => {
+    if (!message.trim() && !documentFile) return;
+
+    // Add user message
+    const userMessage = { 
+      role: 'user', 
+      content: documentFile ? `[Document Upload] ${message || 'Please analyze this document'}` : message,
+      timestamp: new Date().toISOString()
+    };
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiInput('');
+    setAiLoading(true);
+
+    try {
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: documentFile 
+                ? `I'm uploading a financial document. Please analyze it and extract key information like amounts, dates, categories, merchant names, etc. Here's what I need: ${message || 'Extract transaction details'}\n\nMy current financial context:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Top expense categories: ${expenseTransactions.length > 0 ? Object.entries(expenseTransactions.reduce((acc, t) => {
+                    acc[t.category] = (acc[t.category] || 0) + t.amount;
+                    return acc;
+                  }, {})).sort(([,a], [,b]) => b - a).slice(0, 3).map(([cat]) => cat).join(', ') : 'None yet'}`
+                : `I need help with my finances. Here's my current situation:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}\n\nQuestion: ${message}`
+            }
+          ]
+        }
+      ];
+
+      // Add document if provided
+      if (documentFile) {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(documentFile);
+        });
+
+        const mediaType = documentFile.type === 'application/pdf' 
+          ? 'application/pdf'
+          : documentFile.type.startsWith('image/') 
+            ? documentFile.type 
+            : 'application/pdf';
+
+        const contentType = documentFile.type === 'application/pdf' ? 'document' : 'image';
+
+        messages[0].content.push({
+          type: contentType,
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
+        });
+      }
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          messages: messages
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI request failed');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.content[0].text;
+
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date().toISOString()
+      }]);
+    } catch (error) {
+      console.error('AI Error:', error);
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date().toISOString(),
+        error: true
+      }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Contact Form
   const handleContactSubmit = (e) => {
@@ -854,30 +959,41 @@ export default function App() {
       {/* Main Navigation Tabs */}
       <div className={`${cardBg} border-b ${borderColor}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto">
-            {[
-              { id: 'settings', label: 'Settings', icon: Settings },
-              { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
-              { id: 'income', label: 'Income', icon: TrendingUp },
-              { id: 'expense', label: 'Expense', icon: TrendingDown },
-              { id: 'investments', label: 'Investments', icon: Briefcase }
-            ].map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentPage(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition ${
-                    currentPage === tab.id
-                      ? 'border-emerald-500 text-emerald-500'
-                      : `border-transparent ${textColor} ${hoverBg}`
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="whitespace-nowrap">{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-1 overflow-x-auto">
+              {[
+                { id: 'settings', label: 'Settings', icon: Settings },
+                { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
+                { id: 'income', label: 'Income', icon: TrendingUp },
+                { id: 'expense', label: 'Expense', icon: TrendingDown },
+                { id: 'investments', label: 'Investments', icon: Briefcase }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setCurrentPage(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition ${
+                      currentPage === tab.id
+                        ? 'border-emerald-500 text-emerald-500'
+                        : `border-transparent ${textColor} ${hoverBg}`
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="whitespace-nowrap">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* AI Assistant Button */}
+            <button
+              onClick={() => setShowAIChat(!showAIChat)}
+              className="ml-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition flex items-center space-x-2 shadow-lg"
+            >
+              <span className="text-xl">🤖</span>
+              <span className="font-semibold whitespace-nowrap">AI Assistant</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1622,6 +1738,164 @@ export default function App() {
                   className="flex-1 bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition"
                 >
                   Add Investment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Assistant Modal */}
+      {showAIChat && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`${cardBg} border ${borderColor} rounded-2xl w-full max-w-4xl h-[600px] flex flex-col shadow-2xl`}>
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b ${borderColor}">
+              <div className="flex items-center space-x-3">
+                <span className="text-3xl">🤖</span>
+                <div>
+                  <h2 className={`text-2xl font-bold ${textColor}`}>AI Financial Assistant</h2>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                    Chat or upload documents for analysis
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAIChat(false);
+                  setAiMessages([]);
+                }}
+                className={`${hoverBg} p-2 rounded-lg transition`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {aiMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center">
+                  <span className="text-6xl mb-4">💬</span>
+                  <h3 className={`text-xl font-bold ${textColor} mb-2`}>How can I help you today?</h3>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                    Ask me about your finances, upload receipts, or get budgeting advice!
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-6 max-w-lg">
+                    <button
+                      onClick={() => setAiInput("Analyze my spending patterns")}
+                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
+                    >
+                      <span className="text-2xl mb-2 block">📊</span>
+                      <p className={`font-semibold ${textColor}`}>Analyze Spending</p>
+                    </button>
+                    <button
+                      onClick={() => setAiInput("Give me budgeting advice")}
+                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
+                    >
+                      <span className="text-2xl mb-2 block">💡</span>
+                      <p className={`font-semibold ${textColor}`}>Budget Advice</p>
+                    </button>
+                    <button
+                      onClick={() => setAiInput("Help me plan my savings")}
+                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
+                    >
+                      <span className="text-2xl mb-2 block">🎯</span>
+                      <p className={`font-semibold ${textColor}`}>Savings Plan</p>
+                    </button>
+                    <button
+                      onClick={() => document.getElementById('ai-file-input').click()}
+                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
+                    >
+                      <span className="text-2xl mb-2 block">📄</span>
+                      <p className={`font-semibold ${textColor}`}>Upload Document</p>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                aiMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl p-4 ${
+                        msg.role === 'user'
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                          : `${cardBg} border ${borderColor} ${textColor}`
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        <span className="text-xl">
+                          {msg.role === 'user' ? '👤' : '🤖'}
+                        </span>
+                        <div className="flex-1">
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-purple-100' : 'text-gray-500'}`}>
+                            {new Date(msg.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              {aiLoading && (
+                <div className="flex justify-start">
+                  <div className={`${cardBg} border ${borderColor} rounded-2xl p-4`}>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xl">🤖</span>
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className={`border-t ${borderColor} p-4`}>
+              <input
+                type="file"
+                id="ai-file-input"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files[0]) {
+                    handleAIChat(aiInput || "Analyze this document", e.target.files[0]);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => document.getElementById('ai-file-input').click()}
+                  className={`${hoverBg} p-3 rounded-lg transition`}
+                  disabled={aiLoading}
+                >
+                  <Upload className="w-5 h-5" />
+                </button>
+                <input
+                  type="text"
+                  value={aiInput}
+                  onChange={(e) => setAiInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !aiLoading) {
+                      handleAIChat(aiInput);
+                    }
+                  }}
+                  placeholder="Ask about your finances or upload a document..."
+                  className={`flex-1 ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
+                  disabled={aiLoading}
+                />
+                <button
+                  onClick={() => handleAIChat(aiInput)}
+                  disabled={aiLoading || !aiInput.trim()}
+                  className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
