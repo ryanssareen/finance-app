@@ -612,13 +612,7 @@ export default function App() {
                   <p className="text-xs text-emerald-500 mt-1">(Messages and Calls only)</p>
                 </div>
               </div>
-              <div className={`${cardBg} border ${borderColor} p-6 rounded-2xl flex items-start space-x-4`}>
-                <MapPin className="w-6 h-6 text-emerald-500 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Address</h3>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>123 Finance Street, NY 10001</p>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
