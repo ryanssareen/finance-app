@@ -686,10 +686,17 @@ export default function App() {
                   <h3 className="font-semibold mb-1">Email</h3>
                   <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryanssareen@gmail.com</p>
                   <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryanssareen@outlook.com</p>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryansareen@gmail.com</p>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryansareen6@gmail.com</p>
                 </div>
               </div>
 
+              <div className={`${cardBg} border ${borderColor} p-6 rounded-2xl flex items-start space-x-4`}>
+                <Phone className="w-6 h-6 text-emerald-500 mt-1" />
+                <div>
+                  <h3 className="font-semibold mb-1">Phone</h3>
+                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>+91 7428769797</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
