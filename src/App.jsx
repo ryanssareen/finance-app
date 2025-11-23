@@ -453,16 +453,7 @@ export default function App() {
                 </span>
               </div>
               <div className="hidden md:flex space-x-8">
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById('features-section');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }} 
-                  className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}
-                >
+                <button onClick={() => setAppPage('features')} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>
                   Features
                 </button>
                 <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>Contact</button>
@@ -480,17 +471,7 @@ export default function App() {
         {mobileMenuOpen && (
           <div className={`${cardBg} border-b ${borderColor} md:hidden`}>
             <div className="px-4 py-3 space-y-2">
-              <button 
-                onClick={(e) => { 
-                  e.preventDefault();
-                  setMobileMenuOpen(false); 
-                  const element = document.getElementById('features-section');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }} 
-                className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}
-              >
+              <button onClick={() => { setMobileMenuOpen(false); setAppPage('features'); }} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>
                 Features
               </button>
               <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>Contact</button>
@@ -509,12 +490,54 @@ export default function App() {
             <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-8 max-w-3xl mx-auto`}>
               Track income, expenses, investments, and business finances all in one intelligent platform
             </p>
-            <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl transition transform hover:scale-105">
-              Start Free Today <ArrowRight className="inline ml-2" />
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl transition transform hover:scale-105">
+                Start Free Today <ArrowRight className="inline ml-2" />
+              </button>
+              <button onClick={() => setAppPage('features')} className={`${cardBg} border-2 ${borderColor} px-8 py-4 rounded-xl text-lg font-semibold hover:border-emerald-500 transition`}>
+                View Features
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FEATURES PAGE
+  if (appPage === 'features') {
+    return (
+      <div className={`min-h-screen ${bgColor} ${textColor}`}>
+        <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <button onClick={() => setAppPage('landing')} className="flex items-center space-x-3">
+                <span className="text-4xl">💰</span>
+                <span className="text-2xl font-bold">FinanceFlow</span>
+              </button>
+              <div className="flex items-center gap-4">
+                <button onClick={() => setAppPage('landing')} className={`${hoverBg} px-4 py-2 rounded-lg`}>Home</button>
+                <button onClick={() => setAppPage('contact')} className={`${hoverBg} px-4 py-2 rounded-lg`}>Contact</button>
+                <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition">
+                  Get Started
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-16">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+              Powerful Features
+            </h1>
+            <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-3xl mx-auto`}>
+              Everything you need to take control of your finances
+            </p>
           </div>
 
-          <div id="features-section" className="grid md:grid-cols-3 gap-8 mt-20">
+          {/* Core Features */}
+          <div className="grid md:grid-cols-3 gap-8 mb-20">
             {[
               { 
                 icon: Shield, 
@@ -538,6 +561,45 @@ export default function App() {
                 <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{feature.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* Additional Features */}
+          <div className="grid md:grid-cols-2 gap-8 mb-20">
+            {[
+              {
+                icon: TrendingUp,
+                title: 'Income Tracking',
+                desc: 'Track all income sources with custom categories. Monitor salary, business revenue, freelance work, and more.'
+              },
+              {
+                icon: TrendingDown,
+                title: 'Expense Management',
+                desc: 'Organize expenses by category. Upload receipt photos and let AI extract transaction details automatically.'
+              },
+              {
+                icon: Briefcase,
+                title: 'Investment Calculator',
+                desc: 'Calculate returns with inflation adjustment. Track SIPs, lump sums, stocks, and crypto investments.'
+              },
+              {
+                icon: Wallet,
+                title: 'Multi-Currency Support',
+                desc: 'Support for USD, EUR, GBP, INR, JPY, CNY, CAD, and AUD. Convert all data when switching currencies.'
+              }
+            ].map((feature, i) => (
+              <div key={i} className={`${cardBg} border ${borderColor} p-8 rounded-2xl hover:shadow-xl transition`}>
+                <feature.icon className="w-10 h-10 text-emerald-500 mb-4" />
+                <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
+                <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div className="text-center">
+            <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl transition transform hover:scale-105">
+              Start Using FinanceFlow <ArrowRight className="inline ml-2" />
+            </button>
           </div>
         </div>
       </div>
