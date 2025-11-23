@@ -1,118 +1,3 @@
-    return (
-      <div className={`min-h-screen ${bgColor} ${textColor} p-6`}>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Welcome, {currentUser?.username}! 👋</h1>
-            <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Let's set up your income sources to personalize your experience
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {incomeSourceOptions.map(source => {
-              const Icon = source.icon;
-              const isSelected = selectedIncomeSources.includes(source.id);
-              return (
-                <div
-                  key={source.id}
-                  onClick={() => toggleIncomeSource(source.id)}
-                  className={`${cardBg} border-2 ${isSelected ? 'border-emerald-500 bg-emerald-500/10' : borderColor} rounded-2xl p-6 cursor-pointer hover:shadow-lg transition transform hover:scale-105`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <Icon className={`w-12 h-12 ${isSelected ? 'text-emerald-500' : 'text-gray-500'}`} />
-                    {isSelected ? <CheckSquare className="w-6 h-6 text-emerald-500" /> : <Square className="w-6 h-6 text-gray-400" />}
-                  </div>
-                  <h3 className="text-lg font-semibold">{source.label}</h3>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-12 flex justify-center space-x-4">
-            <button
-              onClick={() => setAppPage('auth')}
-              className={`${hoverBg} px-8 py-3 rounded-lg transition`}
-            >
-              Back
-            </button>
-            <button
-              onClick={completeOnboarding}
-              className="bg-emerald-500 text-white px-8 py-3 rounded-lg hover:bg-emerald-600 transition font-semibold"
-            >
-              Continue to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // MAIN APP
-  return (
-    <div className={`min-h-screen ${bgColor}`}>
-      {/* Top Navigation */}
-      <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <DollarSign className="w-8 h-8 text-emerald-500" />
-              <span className="text-xl font-bold ${textColor}">FinanceFlow</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className={`hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                Welcome, {currentUser?.username}
-              </span>
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`${hoverBg} p-2 rounded-lg transition`}
-              >
-                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/20 transition flex items-center space-x-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Navigation Tabs */}
-      <div className={`${cardBg} border-b ${borderColor}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
-              { id: 'transactions', label: 'Transactions', icon: FileText },
-              { id: 'business', label: 'Business', icon: Briefcase },
-              { id: 'investments', label: 'Investments', icon: TrendingUp },
-              { id: 'settings', label: 'Settings', icon: Settings }
-            ].map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentPage(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition ${
-                    currentPage === tab.id
-                      ? 'border-emerald-500 text-emerald-500'
-                      : `border-transparent ${textColor} ${hoverBg}`
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="whitespace-nowrap">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Page Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* DASHBOARD PAGE */}
         {currentPage === 'dashboard' && (
           <div className="space-y-6">
@@ -126,6 +11,7 @@
                   <TrendingUp className="w-6 h-6 text-green-500" />
                 </div>
                 <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
+                <p className="text-sm text-green-500 mt-2">{incomeTransactions.length} transactions</p>
               </div>
               
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
@@ -134,6 +20,7 @@
                   <TrendingDown className="w-6 h-6 text-red-500" />
                 </div>
                 <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
+                <p className="text-sm text-red-500 mt-2">{expenseTransactions.length} transactions</p>
               </div>
               
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
@@ -158,7 +45,9 @@
                     <div key={t.id} className={`flex justify-between items-center p-3 ${inputBg} rounded-lg`}>
                       <div>
                         <p className={`font-semibold ${textColor}`}>{t.label}</p>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.date}</p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {t.category} • {t.date}
+                        </p>
                       </div>
                       <p className={`font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                         {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
@@ -171,29 +60,53 @@
           </div>
         )}
 
-        {/* TRANSACTIONS PAGE */}
-        {currentPage === 'transactions' && (
+        {/* INCOME PAGE */}
+        {currentPage === 'income' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h1 className={`text-3xl font-bold ${textColor}`}>All Transactions</h1>
-              <button
-                onClick={() => setShowTransactionForm(true)}
-                className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Add Transaction</span>
-              </button>
+              <div>
+                <h1 className={`text-3xl font-bold ${textColor}`}>Income</h1>
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                  Total: {currencySymbol}{totalIncome.toFixed(2)}
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => openCategoryModal('income')}
+                  className="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Manage Categories</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setTransactionForm({ 
+                      ...transactionForm, 
+                      type: 'income', 
+                      category: incomeCategories[0] 
+                    });
+                    setShowTransactionForm(true);
+                  }}
+                  className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Add Income</span>
+                </button>
+              </div>
             </div>
 
-            {transactions.length === 0 ? (
+            {incomeTransactions.length === 0 ? (
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-12 text-center`}>
-                <FileText className={`w-16 h-16 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
-                <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>No transactions yet</p>
+                <TrendingUp className={`w-16 h-16 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
+                <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>No income recorded yet</p>
                 <button
-                  onClick={() => setShowTransactionForm(true)}
+                  onClick={() => {
+                    setTransactionForm({ ...transactionForm, type: 'income' });
+                    setShowTransactionForm(true);
+                  }}
                   className="mt-4 bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition"
                 >
-                  Add Your First Transaction
+                  Add Your First Income
                 </button>
               </div>
             ) : (
@@ -204,27 +117,19 @@
                       <tr>
                         <th className={`px-6 py-4 text-left ${textColor}`}>Date</th>
                         <th className={`px-6 py-4 text-left ${textColor}`}>Description</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Type</th>
                         <th className={`px-6 py-4 text-left ${textColor}`}>Category</th>
                         <th className={`px-6 py-4 text-right ${textColor}`}>Amount</th>
                         <th className={`px-6 py-4 text-center ${textColor}`}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {transactions.map(t => (
+                      {incomeTransactions.map(t => (
                         <tr key={t.id} className={`border-t ${borderColor}`}>
                           <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.date}</td>
                           <td className={`px-6 py-4 ${textColor}`}>{t.label}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-sm ${
-                              t.type === 'income' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                            }`}>
-                              {t.type}
-                            </span>
-                          </td>
                           <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.category}</td>
-                          <td className={`px-6 py-4 text-right font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                            {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
+                          <td className="px-6 py-4 text-right font-bold text-green-500">
+                            +{currencySymbol}{t.amount.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
@@ -244,34 +149,56 @@
           </div>
         )}
 
-        {/* BUSINESS PAGE */}
-        {currentPage === 'business' && (
+        {/* EXPENSE PAGE */}
+        {currentPage === 'expense' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h1 className={`text-3xl font-bold ${textColor}`}>Business Tracking</h1>
-              <button
-                onClick={() => setShowBusinessForm(true)}
-                className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Add Record</span>
-              </button>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Business Profit</h3>
-                <p className="text-3xl font-bold text-green-500">{currencySymbol}{businessProfit.toFixed(2)}</p>
-              </div>
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Business Balance</h3>
-                <p className={`text-3xl font-bold ${businessBalance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {currencySymbol}{businessBalance.toFixed(2)}
+              <div>
+                <h1 className={`text-3xl font-bold ${textColor}`}>Expenses</h1>
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                  Total: {currencySymbol}{totalExpense.toFixed(2)}
                 </p>
               </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => openCategoryModal('expense')}
+                  className="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Manage Categories</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setTransactionForm({ 
+                      ...transactionForm, 
+                      type: 'expense', 
+                      category: expenseCategories[0] 
+                    });
+                    setShowTransactionForm(true);
+                  }}
+                  className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition flex items-center space-x-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Add Expense</span>
+                </button>
+              </div>
             </div>
 
-            {businessRecords.length > 0 && (
+            {expenseTransactions.length === 0 ? (
+              <div className={`${cardBg} border ${borderColor} rounded-2xl p-12 text-center`}>
+                <TrendingDown className={`w-16 h-16 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
+                <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>No expenses recorded yet</p>
+                <button
+                  onClick={() => {
+                    setTransactionForm({ ...transactionForm, type: 'expense' });
+                    setShowTransactionForm(true);
+                  }}
+                  className="mt-4 bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition"
+                >
+                  Add Your First Expense
+                </button>
+              </div>
+            ) : (
               <div className={`${cardBg} border ${borderColor} rounded-2xl overflow-hidden`}>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -279,30 +206,27 @@
                       <tr>
                         <th className={`px-6 py-4 text-left ${textColor}`}>Date</th>
                         <th className={`px-6 py-4 text-left ${textColor}`}>Description</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Type</th>
+                        <th className={`px-6 py-4 text-left ${textColor}`}>Category</th>
                         <th className={`px-6 py-4 text-right ${textColor}`}>Amount</th>
-                        <th className={`px-6 py-4 text-right ${textColor}`}>Tax</th>
-                        <th className={`px-6 py-4 text-right ${textColor}`}>Net</th>
+                        <th className={`px-6 py-4 text-center ${textColor}`}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {businessRecords.map(b => (
-                        <tr key={b.id} className={`border-t ${borderColor}`}>
-                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{b.date}</td>
-                          <td className={`px-6 py-4 ${textColor}`}>{b.label}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-sm ${
-                              b.type === 'profit' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                            }`}>
-                              {b.type}
-                            </span>
+                      {expenseTransactions.map(t => (
+                        <tr key={t.id} className={`border-t ${borderColor}`}>
+                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.date}</td>
+                          <td className={`px-6 py-4 ${textColor}`}>{t.label}</td>
+                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.category}</td>
+                          <td className="px-6 py-4 text-right font-bold text-red-500">
+                            -{currencySymbol}{t.amount.toFixed(2)}
                           </td>
-                          <td className={`px-6 py-4 text-right ${textColor}`}>{currencySymbol}{b.amount.toFixed(2)}</td>
-                          <td className={`px-6 py-4 text-right ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {currencySymbol}{b.taxAmount.toFixed(2)}
-                          </td>
-                          <td className={`px-6 py-4 text-right font-bold ${b.type === 'profit' ? 'text-green-500' : 'text-red-500'}`}>
-                            {currencySymbol}{b.netAmount.toFixed(2)}
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => deleteTransaction(t.id)}
+                              className="text-red-500 hover:text-red-600"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -351,7 +275,7 @@
                         <span className="text-green-500 font-bold">{currencySymbol}{inv.nominalReturn}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Real Return (inflation adjusted)</span>
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Real Return (inflation adj.)</span>
                         <span className="text-blue-500 font-bold">{currencySymbol}{inv.realReturn}</span>
                       </div>
                     </div>
@@ -372,7 +296,10 @@
                 <label className={`block mb-2 font-medium ${textColor}`}>Currency</label>
                 <select
                   value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
+                  onChange={async (e) => {
+                    setCurrency(e.target.value);
+                    await updateUserData(currentUser.uid, { currency: e.target.value });
+                  }}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                 >
                   {currencies.map(curr => (
@@ -414,7 +341,7 @@
               <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Account Information</label>
                 <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
-                  <p className={textColor}><span className="font-medium">Username:</span> {currentUser?.username}</p>
+                  <p className={textColor}><span className="font-medium">Username:</span> {userData?.username || currentUser?.displayName}</p>
                   <p className={textColor}><span className="font-medium">Email:</span> {currentUser?.email}</p>
                 </div>
               </div>
@@ -428,7 +355,9 @@
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold ${textColor}`}>Add Transaction</h2>
+              <h2 className={`text-2xl font-bold ${textColor}`}>
+                Add {transactionForm.type === 'income' ? 'Income' : 'Expense'}
+              </h2>
               <button onClick={() => setShowTransactionForm(false)} className={hoverBg + ' p-2 rounded-lg'}>
                 <X className="w-6 h-6" />
               </button>
@@ -436,26 +365,15 @@
 
             <div className="space-y-4">
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Type</label>
-                <select
-                  value={transactionForm.type}
-                  onChange={(e) => setTransactionForm({...transactionForm, type: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </div>
-
-              <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Category</label>
                 <select
                   value={transactionForm.category}
                   onChange={(e) => setTransactionForm({...transactionForm, category: e.target.value})}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                 >
-                  <option value="essential">Essential</option>
-                  <option value="nonEssential">Non-Essential</option>
+                  {(transactionForm.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
 
@@ -467,6 +385,7 @@
                   onChange={(e) => setTransactionForm({...transactionForm, amount: e.target.value})}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                   placeholder="0.00"
+                  step="0.01"
                 />
               </div>
 
@@ -491,20 +410,23 @@
                 />
               </div>
 
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Upload Receipt (Optional)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleReceiptUpload}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                />
-                {transactionForm.receiptImage && (
-                  <div className="mt-2">
-                    <img src={transactionForm.receiptImage} alt="Receipt" className="w-full rounded-lg" />
-                  </div>
-                )}
-              </div>
+              {transactionForm.type === 'expense' && (
+                <div>
+                  <label className={`block mb-2 font-medium ${textColor}`}>Upload Receipt (Optional)</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleReceiptUpload}
+                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Accepted: JPG, PNG, WEBP (Max 5MB)</p>
+                  {transactionForm.receiptImage && (
+                    <div className="mt-2">
+                      <img src={transactionForm.receiptImage} alt="Receipt" className="w-full rounded-lg" />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex space-x-4 pt-4">
                 <button
@@ -515,9 +437,9 @@
                 </button>
                 <button
                   onClick={addTransaction}
-                  className="flex-1 bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition"
+                  className={`flex-1 ${transactionForm.type === 'income' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'} text-white py-3 rounded-lg transition`}
                 >
-                  Add Transaction
+                  Add {transactionForm.type === 'income' ? 'Income' : 'Expense'}
                 </button>
               </div>
             </div>
@@ -525,89 +447,73 @@
         </div>
       )}
 
-      {/* Business Form Modal */}
-      {showBusinessForm && (
+      {/* Category Management Modal */}
+      {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full`}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold ${textColor}`}>Add Business Record</h2>
-              <button onClick={() => setShowBusinessForm(false)} className={hoverBg + ' p-2 rounded-lg'}>
+              <h2 className={`text-2xl font-bold ${textColor}`}>
+                Manage {categoryModalType === 'income' ? 'Income' : 'Expense'} Categories
+              </h2>
+              <button onClick={() => setShowCategoryModal(false)} className={hoverBg + ' p-2 rounded-lg'}>
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Type</label>
-                <select
-                  value={businessForm.type}
-                  onChange={(e) => setBusinessForm({...businessForm, type: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  <option value="profit">Profit</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Amount</label>
-                <input
-                  type="number"
-                  value={businessForm.amount}
-                  onChange={(e) => setBusinessForm({...businessForm, amount: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Description</label>
-                <input
-                  type="text"
-                  value={businessForm.label}
-                  onChange={(e) => setBusinessForm({...businessForm, label: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="Business record description"
-                />
-              </div>
-
-              {businessForm.type === 'profit' && (
-                <div>
-                  <label className={`block mb-2 font-medium ${textColor}`}>Tax Rate (%)</label>
+                <label className={`block mb-2 font-medium ${textColor}`}>Add New Category</label>
+                <div className="flex space-x-2">
                   <input
-                    type="number"
-                    value={businessForm.taxRate}
-                    onChange={(e) => setBusinessForm({...businessForm, taxRate: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder="0"
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className={`flex-1 ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                    placeholder="Category name"
                   />
+                  <button
+                    onClick={addCategory}
+                    className="bg-emerald-500 text-white px-4 py-3 rounded-lg hover:bg-emerald-600 transition"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
                 </div>
-              )}
+              </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Date</label>
-                <input
-                  type="date"
-                  value={businessForm.date}
-                  onChange={(e) => setBusinessForm({...businessForm, date: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                />
+                <label className={`block mb-2 font-medium ${textColor}`}>Custom Categories</label>
+                <div className="space-y-2">
+                  {(categoryModalType === 'income' ? 
+                    incomeCategories.filter(c => !defaultIncomeCategories.includes(c)) :
+                    expenseCategories.filter(c => !defaultExpenseCategories.includes(c))
+                  ).map(cat => (
+                    <div key={cat} className={`flex justify-between items-center p-3 ${inputBg} rounded-lg`}>
+                      <span className={textColor}>{cat}</span>
+                      <button
+                        onClick={() => removeCategory(cat)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {(categoryModalType === 'income' ? 
+                    incomeCategories.filter(c => !defaultIncomeCategories.includes(c)) :
+                    expenseCategories.filter(c => !defaultExpenseCategories.includes(c))
+                  ).length === 0 && (
+                    <p className={`text-center py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      No custom categories yet
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={() => setShowBusinessForm(false)}
-                  className={`flex-1 ${hoverBg} py-3 rounded-lg transition`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addBusinessRecord}
-                  className="flex-1 bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition"
-                >
-                  Add Record
-                </button>
-              </div>
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className={`w-full ${hoverBg} py-3 rounded-lg transition`}
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
@@ -644,6 +550,7 @@
                   onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                   placeholder="0.00"
+                  step="0.01"
                 />
               </div>
 
@@ -666,6 +573,7 @@
                   onChange={(e) => setInvestmentForm({...investmentForm, returnRate: e.target.value})}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                   placeholder="12"
+                  step="0.1"
                 />
               </div>
 
@@ -677,6 +585,7 @@
                   onChange={(e) => setInvestmentForm({...investmentForm, inflationRate: e.target.value})}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
                   placeholder="6"
+                  step="0.1"
                 />
               </div>
 
