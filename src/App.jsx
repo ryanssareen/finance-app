@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, Briefcase, Settings, LogOut, Plus, Moon, Sun, ArrowRight, Mail, Phone, MapPin, Upload, FileText, Home, Building, Building2, Wallet, CheckSquare, Square, X, Menu, Shield, Zap, TrendingDown, Edit2, Trash2 } from 'lucide-react';
 
 // Import Firebase helpers
@@ -630,55 +630,7 @@ export default function App() {
             Have questions? We'd love to hear from you.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className={`${cardBg} border ${borderColor} p-8 rounded-2xl`}>
-              <form onSubmit={handleContactSubmit} className="space-y-6">
-                <div>
-                  <label className="block mb-2 font-medium">Name</label>
-                  <input
-                    type="text"
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">Email</label>
-                  <input
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">Subject</label>
-                  <input
-                    type="text"
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm({...contactForm, subject: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">Message</label>
-                  <textarea
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    rows="4"
-                    required
-                  />
-                </div>
-                <button type="submit" className="w-full bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition font-semibold">
-                  Send Message
-                </button>
-              </form>
-            </div>
-
+          <div className="max-w-xl mx-auto">
             <div className="space-y-6">
               <div className={`${cardBg} border ${borderColor} p-6 rounded-2xl flex items-start space-x-4`}>
                 <Mail className="w-6 h-6 text-emerald-500 mt-1" />
@@ -970,11 +922,11 @@ export default function App() {
             </div>
         {/* Charts Section */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Income vs Expense Pie Chart */}
+          {/* Income vs Expense Donut Chart */}
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
             <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Income vs Expenses</h3>
             {totalIncome > 0 || totalExpense > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
                     data={[
@@ -983,15 +935,27 @@ export default function App() {
                     ]}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
+                    labelLine={true}
+                    label={({ name, percent, value }) => `${name}: ${currencySymbol}${value.toFixed(0)} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={110}
+                    innerRadius={70}
                     dataKey="value"
+                    strokeWidth={3}
+                    stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
                   >
                     <Cell fill="#10b981" />
                     <Cell fill="#ef4444" />
                   </Pie>
-                  <Tooltip formatter={(value) => `${currencySymbol}${value.toFixed(2)}`} />
+                  <Tooltip 
+                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      padding: '12px'
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -1001,34 +965,57 @@ export default function App() {
             )}
           </div>
 
-          {/* Top Expense Categories */}
+          {/* Top Expense Categories Bar Chart */}
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
             <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Top Expense Categories</h3>
             {expenseTransactions.length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(
-                  expenseTransactions.reduce((acc, t) => {
-                    acc[t.category] = (acc[t.category] || 0) + t.amount;
-                    return acc;
-                  }, {})
-                )
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 5)
-                  .map(([category, amount]) => (
-                    <div key={category}>
-                      <div className="flex justify-between mb-1">
-                        <span className={textColor}>{category}</span>
-                        <span className={textColor}>{currencySymbol}{amount.toFixed(2)}</span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div
-                          className="bg-red-500 h-2 rounded-full"
-                          style={{ width: `${(amount / totalExpense) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-              </div>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart
+                  data={Object.entries(
+                    expenseTransactions.reduce((acc, t) => {
+                      acc[t.category] = (acc[t.category] || 0) + t.amount;
+                      return acc;
+                    }, {})
+                  )
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5)
+                    .map(([category, amount]) => ({ category, amount }))}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                  <XAxis 
+                    dataKey="category" 
+                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                    angle={-25}
+                    textAnchor="end"
+                    height={80}
+                    interval={0}
+                  />
+                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
+                  <Tooltip 
+                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      padding: '12px'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="#ef4444" radius={[8, 8, 0, 0]}>
+                    {Object.entries(
+                      expenseTransactions.reduce((acc, t) => {
+                        acc[t.category] = (acc[t.category] || 0) + t.amount;
+                        return acc;
+                      }, {})
+                    )
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 5)
+                      .map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#ef4444', '#f87171', '#fb923c', '#fbbf24', '#facc15'][index % 5]} />
+                      ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
               <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 No expenses yet
