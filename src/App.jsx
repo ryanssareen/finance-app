@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { DollarSign, TrendingUp, Briefcase, Settings, LogOut, Plus, Moon, Sun, ArrowRight, Mail, Phone, MapPin, Upload, FileText, Home, Building, Building2, Wallet, CheckSquare, Square, X, Menu, Shield, Zap, TrendingDown, Edit2, Trash2, Globe } from 'lucide-react';
+import { DollarSign, TrendingUp, Briefcase, Settings, LogOut, Plus, Moon, Sun, ArrowRight, Mail, Phone, MapPin, Upload, FileText, Home, Building, Building2, Wallet, CheckSquare, Square, X, Menu, Shield, Zap, TrendingDown, Edit2, Trash2 } from 'lucide-react';
 
 // Import Firebase helpers
 import { 
@@ -28,20 +28,6 @@ import {
   convertAllInvestments,
   getConversionRate 
 } from './currencyConverter';
-
-// Import Translations
-import { translations, languages, getTranslation } from './translations';
-
-// Import Budget & Investment Components
-import { BudgetAnalysisPage } from './BudgetAnalysisPage';
-import { InvestmentPage } from './InvestmentPage';
-import { 
-  getCurrentMonthRange,
-  calculateActualSpending,
-  analyzeBudget,
-  analyzeInvestmentDiversification,
-  generateInvestmentAIPrompt
-} from './budgetHelpers';
 
 const currencies = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -80,24 +66,12 @@ export default function App() {
   const [currency, setCurrency] = useState('USD');
   const [previousCurrency, setPreviousCurrency] = useState('USD');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [language, setLanguage] = useState('en');
-  const [viewMode, setViewMode] = useState('modern'); // classic or modern
   
   // AI Assistant
   const [showAIChat, setShowAIChat] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [groqApiKey, setGroqApiKey] = useState('');
-  
-  // Budget Goals & Analysis
-  const [budgetGoals, setBudgetGoals] = useState({ needs: 50, wants: 30, savings: 20 });
-  const [showBudgetSetup, setShowBudgetSetup] = useState(false);
-  const [showBudgetAnalysis, setShowBudgetAnalysis] = useState(false);
-  
-  // Investment Diversification
-  const [showDiversificationAnalysis, setShowDiversificationAnalysis] = useState(false);
-  const [showBudgetGoalsForm, setShowBudgetGoalsForm] = useState(false);
   
   // Transactions & Categories
   const [transactions, setTransactions] = useState([]);
@@ -143,9 +117,6 @@ export default function App() {
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
 
   const currencySymbol = currencies.find(c => c.code === currency)?.symbol || '$';
-  
-  // Translation helper
-  const t = (key) => getTranslation(language, key);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -171,38 +142,15 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Load theme and language
+  // Load theme
   useEffect(() => {
     const savedTheme = localStorage.getItem('financeAppTheme');
     if (savedTheme) setTheme(savedTheme);
-    
-    const savedLanguage = localStorage.getItem('financeAppLanguage');
-    if (savedLanguage) setLanguage(savedLanguage);
-    
-    const savedApiKey = localStorage.getItem('groqApiKey');
-    if (savedApiKey) setGroqApiKey(savedApiKey);
-    
-    const savedBudgetGoals = localStorage.getItem('budgetGoals');
-    if (savedBudgetGoals) setBudgetGoals(JSON.parse(savedBudgetGoals));
   }, []);
 
   useEffect(() => {
     localStorage.setItem('financeAppTheme', theme);
   }, [theme]);
-  
-  useEffect(() => {
-    localStorage.setItem('financeAppLanguage', language);
-  }, [language]);
-  
-  useEffect(() => {
-    if (groqApiKey) {
-      localStorage.setItem('groqApiKey', groqApiKey);
-    }
-  }, [groqApiKey]);
-  
-  useEffect(() => {
-    localStorage.setItem('budgetGoals', JSON.stringify(budgetGoals));
-  }, [budgetGoals]);
 
   // Load user data from Firestore
   const loadUserData = async (userId) => {
@@ -307,20 +255,9 @@ export default function App() {
       return;
     }
 
-    const transactionAmount = parseFloat(transactionForm.amount);
-    
-    // Balance validation for expenses
-    if (transactionForm.type === 'expense') {
-      const currentBalance = totalIncome - totalExpense;
-      if (currentBalance < transactionAmount) {
-        alert(`Insufficient funds! Current balance: ${currencySymbol}${currentBalance.toFixed(2)}. Transaction amount: ${currencySymbol}${transactionAmount.toFixed(2)}. This transaction is not possible.`);
-        return;
-      }
-    }
-
     const newTransaction = { 
       ...transactionForm, 
-      amount: transactionAmount,
+      amount: parseFloat(transactionForm.amount),
       userId: currentUser.uid
     };
 
@@ -495,25 +432,14 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // AI Chat Handler - Using Groq API (free, no payment required)
+  // AI Chat Handler
   const handleAIChat = async (message, documentFile = null) => {
     if (!message.trim() && !documentFile) return;
-    
-    // Check if API key is configured
-    if (!groqApiKey) {
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '⚠️ Please configure your Groq API key in Settings. Get one free at console.groq.com - no payment required!',
-        timestamp: new Date().toISOString(),
-        error: true
-      }]);
-      return;
-    }
 
     // Add user message
     const userMessage = { 
       role: 'user', 
-      content: message,
+      content: documentFile ? `[Document Upload] ${message || 'Please analyze this document'}` : message,
       timestamp: new Date().toISOString()
     };
     setAiMessages(prev => [...prev, userMessage]);
@@ -521,45 +447,71 @@ export default function App() {
     setAiLoading(true);
 
     try {
-      // Build financial context
-      const contextText = `Financial Context:
-- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}
-- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}
-- Balance: ${currencySymbol}${balance.toFixed(2)}
-- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: documentFile 
+                ? `I'm uploading a financial document. Please analyze it and extract key information like amounts, dates, categories, merchant names, etc. Here's what I need: ${message || 'Extract transaction details'}\n\nMy current financial context:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Top expense categories: ${expenseTransactions.length > 0 ? Object.entries(expenseTransactions.reduce((acc, t) => {
+                    acc[t.category] = (acc[t.category] || 0) + t.amount;
+                    return acc;
+                  }, {})).sort(([,a], [,b]) => b - a).slice(0, 3).map(([cat]) => cat).join(', ') : 'None yet'}`
+                : `I need help with my finances. Here's my current situation:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}\n\nQuestion: ${message}`
+            }
+          ]
+        }
+      ];
 
-User Question: ${message}`;
+      // Add document if provided
+      if (documentFile) {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(documentFile);
+        });
 
-      // Call Groq API
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const mediaType = documentFile.type === 'application/pdf' 
+          ? 'application/pdf'
+          : documentFile.type.startsWith('image/') 
+            ? documentFile.type 
+            : 'application/pdf';
+
+        const contentType = documentFile.type === 'application/pdf' ? 'document' : 'image';
+
+        messages[0].content.push({
+          type: contentType,
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: base64Data
+          }
+        });
+      }
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${groqApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile', // Fast, free, accurate
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful financial assistant. Analyze financial data, provide budgeting advice, and help users manage their money wisely. Be concise and practical.'
-            },
-            {
-              role: 'user',
-              content: contextText
-            }
-          ],
-          max_tokens: 1000,
-          temperature: 0.7
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          messages: messages
         })
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        throw new Error('AI request failed');
       }
 
       const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
+      const aiResponse = data.content[0].text;
 
       setAiMessages(prev => [...prev, {
         role: 'assistant',
@@ -567,20 +519,14 @@ User Question: ${message}`;
         timestamp: new Date().toISOString()
       }]);
     } catch (error) {
-      console.error('Groq API Error:', error);
+      console.error('AI Error:', error);
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please check your API key in Settings and try again.',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
         timestamp: new Date().toISOString(),
         error: true
       }]);
     } finally {
-      setAiLoading(false);
-    }
-  };
-
-  // Contact Form
-  const handleContactSubmit = (e) => {
       setAiLoading(false);
     }
   };
@@ -833,26 +779,11 @@ User Question: ${message}`;
       <div className={`min-h-screen ${bgColor} ${textColor} flex items-center justify-center p-4`}>
         {!showForgotPassword ? (
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-8 w-full max-w-md`}>
-            {/* Language Selector */}
-            <div className="flex justify-end mb-4">
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className={`${inputBg} ${textColor} border ${borderColor} rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none`}
-              >
-                {languages.map(lang => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.flag} {lang.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="text-center mb-8">
               <DollarSign className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold mb-2">{isLogin ? t('welcomeBack') : t('signUp')}</h1>
+              <h1 className="text-3xl font-bold mb-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
               <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                {isLogin ? t('signIn') : 'Start managing your finances today'}
+                {isLogin ? 'Sign in to continue' : 'Start managing your finances today'}
               </p>
             </div>
 
@@ -865,45 +796,45 @@ User Question: ${message}`;
             <div className="space-y-4">
               {!isLogin && (
                 <div>
-                  <label className="block mb-2 font-medium">{t('username')}</label>
+                  <label className="block mb-2 font-medium">Username</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder={t('username')}
+                    placeholder="Choose a username"
                     disabled={authLoading}
                   />
                 </div>
               )}
 
               <div>
-                <label className="block mb-2 font-medium">{t('email')}</label>
+                <label className="block mb-2 font-medium">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder={t('email')}
+                  placeholder="Enter your email"
                   disabled={authLoading}
                 />
               </div>
 
               <div>
-                <label className="block mb-2 font-medium">{t('password')}</label>
+                <label className="block mb-2 font-medium">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder={t('password')}
+                  placeholder="Enter your password"
                   disabled={authLoading}
                 />
               </div>
 
               {!isLogin && (
                 <div>
-                  <label className="block mb-2 font-medium">{t('currency')}</label>
+                  <label className="block mb-2 font-medium">Currency</label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
@@ -926,7 +857,7 @@ User Question: ${message}`;
                     className="text-sm text-emerald-500 hover:text-emerald-600"
                     disabled={authLoading}
                   >
-                    {t('forgotPassword')}
+                    Forgot Password?
                   </button>
                 </div>
               )}
@@ -936,7 +867,7 @@ User Question: ${message}`;
                 disabled={authLoading}
                 className={`w-full bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition font-semibold ${authLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {authLoading ? t('loading') : (isLogin ? t('signIn') : t('register'))}
+                {authLoading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
               </button>
 
               <button
@@ -947,7 +878,7 @@ User Question: ${message}`;
                 disabled={authLoading}
                 className={`w-full ${hoverBg} py-3 rounded-lg transition`}
               >
-                {isLogin ? t('noAccount') + ' ' + t('signUp') : t('haveAccount') + ' ' + t('signIn')}
+                {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
               </button>
 
               <button
@@ -1017,7 +948,7 @@ User Question: ${message}`;
             </div>
             <div className="flex items-center space-x-4">
               <span className={`hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {t('welcome')}, {userData?.username || currentUser?.displayName}
+                Welcome, {userData?.username || currentUser?.displayName}
               </span>
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -1026,18 +957,11 @@ User Question: ${message}`;
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               <button
-                onClick={() => setCurrentPage('settings')}
-                className={`${hoverBg} p-2 rounded-lg transition ${currentPage === 'settings' ? 'text-emerald-500' : ''}`}
-                title={t('settings')}
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button
                 onClick={handleLogout}
                 className="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/20 transition flex items-center space-x-2"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('logout')}</span>
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>
@@ -1050,11 +974,11 @@ User Question: ${message}`;
           <div className="flex justify-between items-center">
             <div className="flex space-x-1 overflow-x-auto">
               {[
-                { id: 'dashboard', label: t('dashboard'), icon: DollarSign },
-                { id: 'income', label: t('income'), icon: TrendingUp },
-                { id: 'expense', label: t('expense'), icon: TrendingDown },
-                { id: 'investments', label: t('investments'), icon: Briefcase },
-                { id: 'budget', label: t('budgetAnalysis'), icon: CheckSquare }
+                { id: 'settings', label: 'Settings', icon: Settings },
+                { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
+                { id: 'income', label: 'Income', icon: TrendingUp },
+                { id: 'expense', label: 'Expense', icon: TrendingDown },
+                { id: 'investments', label: 'Investments', icon: Briefcase }
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -1080,7 +1004,7 @@ User Question: ${message}`;
               className="ml-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition flex items-center space-x-2 shadow-lg"
             >
               <span className="text-xl">🤖</span>
-              <span className="font-semibold whitespace-nowrap">{t('aiAssistant')}</span>
+              <span className="font-semibold whitespace-nowrap">AI Assistant</span>
             </button>
           </div>
         </div>
@@ -1092,31 +1016,31 @@ User Question: ${message}`;
         {/* DASHBOARD PAGE */}
         {currentPage === 'dashboard' && (
           <div className="space-y-6">
-            <h1 className={`text-3xl font-bold ${textColor}`}>{t('financialDashboard')}</h1>
+            <h1 className={`text-3xl font-bold ${textColor}`}>Financial Dashboard</h1>
             
             {/* Summary Cards */}
             <div className="grid md:grid-cols-3 gap-6">
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('totalIncome')}</h3>
+                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Total Income</h3>
                   <TrendingUp className="w-6 h-6 text-green-500" />
                 </div>
                 <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
-                <p className="text-sm text-green-500 mt-2">{incomeTransactions.length} {t('transactions')}</p>
+                <p className="text-sm text-green-500 mt-2">{incomeTransactions.length} transactions</p>
               </div>
               
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('totalExpenses')}</h3>
+                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Total Expenses</h3>
                   <TrendingDown className="w-6 h-6 text-red-500" />
                 </div>
                 <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
-                <p className="text-sm text-red-500 mt-2">{expenseTransactions.length} {t('transactions')}</p>
+                <p className="text-sm text-red-500 mt-2">{expenseTransactions.length} transactions</p>
               </div>
               
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('netBalance')}</h3>
+                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Net Balance</h3>
                   <DollarSign className={`w-6 h-6 ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                 </div>
                 <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -1228,245 +1152,7 @@ User Question: ${message}`;
           </div>
         </div>
 
-        {/* NEW DASHBOARD VISUALIZATIONS - Based on Whiteboard Specs */}
         
-        {/* Investment Analytics Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Investment Return Chart */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Return</h3>
-            {investments.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart
-                  data={investments.map((inv, idx) => {
-                    const nominalReturn = inv.amount * (1 + (inv.returnRate / 100) * (inv.duration / 12));
-                    return {
-                      name: inv.label.substring(0, 15),
-                      invested: inv.amount,
-                      returns: nominalReturn,
-                      index: idx
-                    };
-                  })}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                    angle={-25}
-                    textAnchor="end"
-                    height={80}
-                    interval={0}
-                  />
-                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="invested" stroke="#8b5cf6" strokeWidth={2} name="Invested" />
-                  <Line type="monotone" dataKey="returns" stroke="#10b981" strokeWidth={2} name="Expected Returns" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No investments yet
-              </p>
-            )}
-          </div>
-
-          {/* Investment Type Breakdown */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Type</h3>
-            {investments.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={Object.entries(
-                      investments.reduce((acc, inv) => {
-                        const type = inv.type || 'other';
-                        acc[type] = (acc[type] || 0) + inv.amount;
-                        return acc;
-                      }, {})
-                    ).map(([type, amount]) => ({ 
-                      name: type.toUpperCase(), 
-                      value: amount 
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                    outerRadius={100}
-                    dataKey="value"
-                  >
-                    {Object.entries(
-                      investments.reduce((acc, inv) => {
-                        const type = inv.type || 'other';
-                        acc[type] = (acc[type] || 0) + inv.amount;
-                        return acc;
-                      }, {})
-                    ).map((entry, index) => {
-                      const colors = {
-                        'crypto': '#f59e0b',
-                        'stocks': '#3b82f6', 
-                        'bonds': '#10b981',
-                        'sip': '#8b5cf6',
-                        'real estate': '#ec4899',
-                        'other': '#6b7280'
-                      };
-                      const type = entry[0];
-                      return <Cell key={`cell-${index}`} fill={colors[type] || colors['other']} />;
-                    })}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No investments yet
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Budget & Spending Analytics Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Budget Allocation Circle (50/30/20 Rule) */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Allocation</h3>
-            {totalIncome > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { 
-                        name: 'Income', 
-                        value: totalIncome,
-                        fill: '#10b981'
-                      },
-                      { 
-                        name: 'Wants', 
-                        value: expenseTransactions.filter(t => 
-                          ['Entertainment', 'Shopping', 'Other'].includes(t.category)
-                        ).reduce((sum, t) => sum + t.amount, 0),
-                        fill: '#ef4444'
-                      },
-                      { 
-                        name: 'Needs', 
-                        value: expenseTransactions.filter(t => 
-                          ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category)
-                        ).reduce((sum, t) => sum + t.amount, 0),
-                        fill: '#3b82f6'
-                      }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={({ name, percent, value }) => 
-                      `${name}: ${currencySymbol}${value.toFixed(0)} (${(percent * 100).toFixed(1)}%)`
-                    }
-                    outerRadius={110}
-                    innerRadius={70}
-                    dataKey="value"
-                    strokeWidth={3}
-                    stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
-                  >
-                    <Cell fill="#10b981" />
-                    <Cell fill="#ef4444" />
-                    <Cell fill="#3b82f6" />
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}
-                  />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No income data yet
-              </p>
-            )}
-          </div>
-
-          {/* Expenditure Breakdown Bar Chart */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Expenditure Breakdown</h3>
-            {expenseTransactions.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart
-                  data={[
-                    { 
-                      category: 'Food', 
-                      amount: expenseTransactions.filter(t => t.category === 'Food').reduce((sum, t) => sum + t.amount, 0)
-                    },
-                    { 
-                      category: 'Beverage', 
-                      amount: expenseTransactions.filter(t => t.category === 'Beverage' || t.category === 'Entertainment').reduce((sum, t) => sum + t.amount, 0) * 0.3
-                    },
-                    { 
-                      category: 'Utilities', 
-                      amount: expenseTransactions.filter(t => t.category === 'Utilities').reduce((sum, t) => sum + t.amount, 0)
-                    },
-                    { 
-                      category: 'Entertainment', 
-                      amount: expenseTransactions.filter(t => t.category === 'Entertainment').reduce((sum, t) => sum + t.amount, 0)
-                    }
-                  ].filter(item => item.amount > 0)}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis 
-                    dataKey="category" 
-                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                    angle={-25}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}
-                  />
-                  <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                    <Cell fill="#10b981" />
-                    <Cell fill="#f59e0b" />
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#ec4899" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No expenses yet
-              </p>
-            )}
-          </div>
-        </div>
 
             {/* Recent Transactions */}
             <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
@@ -1674,77 +1360,60 @@ User Question: ${message}`;
 
         {/* INVESTMENTS PAGE */}
         {currentPage === 'investments' && (
-          <InvestmentPage
-            investments={investments}
-            showInvestmentForm={showInvestmentForm}
-            setShowInvestmentForm={setShowInvestmentForm}
-            currencySymbol={currencySymbol}
-            theme={theme}
-            textColor={textColor}
-            cardBg={cardBg}
-            borderColor={borderColor}
-            inputBg={inputBg}
-            hoverBg={hoverBg}
-            t={t}
-            onAIAdvice={() => {
-              const portfolioAnalysis = analyzeInvestmentDiversification(investments);
-              const prompt = generateInvestmentAIPrompt(portfolioAnalysis, {
-                totalIncome,
-                totalExpense,
-                balance,
-                currency: currencySymbol
-              });
-              setAiMessages([{ role: 'user', content: prompt, timestamp: new Date().toISOString() }]);
-              setShowAIChat(true);
-              handleAIChat(prompt);
-            }}
-            analyzeInvestmentDiversification={analyzeInvestmentDiversification}
-          />
-        )}
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className={`text-3xl font-bold ${textColor}`}>Investment Portfolio</h1>
+              <button
+                onClick={() => setShowInvestmentForm(true)}
+                className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Investment</span>
+              </button>
+            </div>
 
-        {/* BUDGET ANALYSIS PAGE */}
-        {currentPage === 'budget' && (
-          <BudgetAnalysisPage
-            transactions={transactions}
-            budgetGoals={budgetGoals}
-            setBudgetGoals={setBudgetGoals}
-            currencySymbol={currencySymbol}
-            theme={theme}
-            textColor={textColor}
-            cardBg={cardBg}
-            borderColor={borderColor}
-            inputBg={inputBg}
-            hoverBg={hoverBg}
-            t={t}
-          />
-        )}
-            onAIAdvice={() => {
-              const portfolioAnalysis = analyzeInvestmentDiversification(investments);
-              const prompt = generateInvestmentAIPrompt(portfolioAnalysis, {
-                totalIncome,
-                totalExpense,
-                balance,
-                currency: currencySymbol
-              });
-              setAiMessages([{ role: 'user', content: prompt, timestamp: new Date().toISOString() }]);
-              setShowAIChat(true);
-              handleAIChat(prompt);
-            }}
-            analyzeInvestmentDiversification={analyzeInvestmentDiversification}
-            calculateActualSpending={calculateActualSpending}
-            analyzeBudget={analyzeBudget}
-            getCurrentMonthRange={getCurrentMonthRange}
-          />
+            {investments.length > 0 && (
+              <div className="grid md:grid-cols-2 gap-6">
+                {investments.map(inv => (
+                  <div key={inv.id} className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
+                    <h3 className={`text-xl font-bold mb-4 ${textColor}`}>{inv.label}</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Principal</span>
+                        <span className={textColor}>{currencySymbol}{inv.amount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Duration</span>
+                        <span className={textColor}>{inv.duration} months</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Return Rate</span>
+                        <span className={textColor}>{inv.returnRate}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Nominal Return</span>
+                        <span className="text-green-500 font-bold">{currencySymbol}{inv.nominalReturn}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Real Return (inflation adj.)</span>
+                        <span className="text-blue-500 font-bold">{currencySymbol}{inv.realReturn}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* SETTINGS PAGE */}
         {currentPage === 'settings' && (
           <div className="space-y-6">
-            <h1 className={`text-3xl font-bold ${textColor}`}>{t('settings')}</h1>
+            <h1 className={`text-3xl font-bold ${textColor}`}>Settings</h1>
             
             <div className={`${cardBg} border ${borderColor} rounded-2xl p-6 space-y-6`}>
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>{t('currency')}</label>
+                <label className={`block mb-2 font-medium ${textColor}`}>Currency</label>
                 <select
                   value={currency}
                   onChange={async (e) => {
@@ -1791,7 +1460,7 @@ User Question: ${message}`;
               </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>{t('theme')}</label>
+                <label className={`block mb-2 font-medium ${textColor}`}>Theme</label>
                 <div className="flex space-x-4">
                   <button
                     onClick={() => setTheme('light')}
@@ -1802,7 +1471,7 @@ User Question: ${message}`;
                     }`}
                   >
                     <Sun className="w-6 h-6 mx-auto" />
-                    <p className="mt-2">{t('light')}</p>
+                    <p className="mt-2">Light</p>
                   </button>
                   <button
                     onClick={() => setTheme('dark')}
@@ -1813,129 +1482,16 @@ User Question: ${message}`;
                     }`}
                   >
                     <Moon className="w-6 h-6 mx-auto" />
-                    <p className="mt-2">{t('dark')}</p>
+                    <p className="mt-2">Dark</p>
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>View Mode</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setViewMode('classic')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      viewMode === 'classic'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <div className="text-2xl mx-auto mb-2">📋</div>
-                    <p className="font-medium">Classic</p>
-                    <p className="text-xs text-gray-500 mt-1">Simple layout</p>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('modern')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      viewMode === 'modern'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <div className="text-2xl mx-auto mb-2">✨</div>
-                    <p className="font-medium">Modern</p>
-                    <p className="text-xs text-gray-500 mt-1">Enhanced visuals</p>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>{t('language')}</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  {languages.map(lang => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.flag} {lang.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>
-                  AI Assistant API Key (Groq - Free)
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    value={groqApiKey}
-                    onChange={(e) => setGroqApiKey(e.target.value)}
-                    placeholder="gsk-..."
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Get your free API key from{' '}
-                    <a 
-                      href="https://console.groq.com/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-500 hover:text-emerald-400 underline"
-                    >
-                      console.groq.com
-                    </a>
-                    {' '}(No payment required - completely free!)
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                    placeholder="sk-..."
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Get your free API key from{' '}
-                    <a 
-                      href="https://platform.openai.com/api-keys" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-500 hover:text-emerald-400 underline"
-                    >
-                      platform.openai.com/api-keys
-                    </a>
-                    {' '}(No payment required - $5 free credits!)
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>{t('accountInfo')}</label>
+                <label className={`block mb-2 font-medium ${textColor}`}>Account Information</label>
                 <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
-                  <p className={textColor}><span className="font-medium">{t('username')}:</span> {userData?.username || currentUser?.displayName}</p>
-                  <p className={textColor}><span className="font-medium">{t('email')}:</span> {currentUser?.email}</p>
-                </div>
-              </div>
-
-              {/* Financial Overview Section */}
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Financial Overview</label>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-green-500`}>
-                    <p className="text-sm text-gray-500">Total Income</p>
-                    <p className={`text-2xl font-bold text-green-500`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{incomeTransactions.length} transactions</p>
-                  </div>
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-red-500`}>
-                    <p className="text-sm text-gray-500">Total Expenses</p>
-                    <p className={`text-2xl font-bold text-red-500`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{expenseTransactions.length} transactions</p>
-                  </div>
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-blue-500`}>
-                    <p className="text-sm text-gray-500">Total Investments</p>
-                    <p className={`text-2xl font-bold text-blue-500`}>{currencySymbol}{investments.reduce((sum, inv) => sum + inv.amount, 0).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{investments.length} investments</p>
-                  </div>
+                  <p className={textColor}><span className="font-medium">Username:</span> {userData?.username || currentUser?.displayName}</p>
+                  <p className={textColor}><span className="font-medium">Email:</span> {currentUser?.email}</p>
                 </div>
               </div>
             </div>
@@ -2125,23 +1681,6 @@ User Question: ${message}`;
 
             <div className="space-y-4">
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Investment Type</label>
-                <select
-                  value={investmentForm.type}
-                  onChange={(e) => setInvestmentForm({...investmentForm, type: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  <option value="stocks">📈 Stocks</option>
-                  <option value="crypto">₿ Crypto</option>
-                  <option value="bonds">🏦 Bonds</option>
-                  <option value="sip">💰 SIP/Mutual Funds</option>
-                  <option value="real estate">🏠 Real Estate</option>
-                  <option value="fd">🏛️ Fixed Deposit</option>
-                  <option value="other">📊 Other</option>
-                </select>
-              </div>
-
-              <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Investment Name</label>
                 <input
                   type="text"
@@ -2154,19 +1693,14 @@ User Question: ${message}`;
 
               <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Principal Amount</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={investmentForm.amount}
-                    onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                  <div className="absolute right-3 top-3 text-sm text-gray-500">
-                    Available: {currencySymbol}{balance.toFixed(2)}
-                  </div>
-                </div>
+                <input
+                  type="number"
+                  value={investmentForm.amount}
+                  onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                  placeholder="0.00"
+                  step="0.01"
+                />
               </div>
 
               <div>
