@@ -1316,25 +1316,29 @@ User Question: ${message}`;
           {/* Budget Allocation Circle - RGB CODED DONUT */}
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
             <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Allocation (RGB)</h3>
-            {expenseTransactions.length > 0 || totalIncome > 0 ? (
+            {totalIncome > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Income', value: totalIncome, fill: '#10b981' },
                       { 
-                        name: 'Wants', 
+                        name: 'Needs (Blue)', 
+                        value: expenseTransactions
+                          .filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category))
+                          .reduce((sum, t) => sum + t.amount, 0),
+                        fill: '#3b82f6'
+                      },
+                      { 
+                        name: 'Wants (Red)', 
                         value: expenseTransactions
                           .filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category))
                           .reduce((sum, t) => sum + t.amount, 0),
                         fill: '#ef4444'
                       },
                       { 
-                        name: 'Needs', 
-                        value: expenseTransactions
-                          .filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category))
-                          .reduce((sum, t) => sum + t.amount, 0),
-                        fill: '#3b82f6'
+                        name: 'Savings (Green)', 
+                        value: Math.max(0, totalIncome - totalExpense),
+                        fill: '#10b981'
                       }
                     ]}
                     cx="50%"
@@ -1347,9 +1351,9 @@ User Question: ${message}`;
                     stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
                     strokeWidth={3}
                   >
-                    <Cell fill="#10b981" />
-                    <Cell fill="#ef4444" />
                     <Cell fill="#3b82f6" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill="#10b981" />
                   </Pie>
                   <Tooltip 
                     formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
@@ -1364,7 +1368,7 @@ User Question: ${message}`;
               </ResponsiveContainer>
             ) : (
               <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No data to display yet
+                No income data yet. Add income to see budget allocation.
               </p>
             )}
           </div>
