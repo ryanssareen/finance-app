@@ -69,7 +69,11 @@ export default function App() {
   
   // AI Assistant
   const [showAIChat, setShowAIChat] = useState(false);
-  const [aiMessages, setAiMessages] = useState([]);
+  const [aiMessages, setAiMessages] = useState(() => {
+    // Load saved conversation from localStorage
+    const saved = localStorage.getItem('aiChatHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   // Groq API key from environment variable (set in Netlify dashboard or .env file)
@@ -156,6 +160,13 @@ export default function App() {
     const savedTheme = localStorage.getItem('financeAppTheme');
     if (savedTheme) setTheme(savedTheme);
   }, []);
+
+  // Save AI messages to localStorage whenever they change
+  useEffect(() => {
+    if (aiMessages.length > 0) {
+      localStorage.setItem('aiChatHistory', JSON.stringify(aiMessages));
+    }
+  }, [aiMessages]);
 
   useEffect(() => {
     localStorage.setItem('financeAppTheme', theme);
@@ -440,6 +451,14 @@ export default function App() {
       if (saved) setBusinessRecords(JSON.parse(saved));
     }
   }, [currentUser]);
+
+  // New Conversation Handler
+  const startNewConversation = () => {
+    if (confirm('Start a new conversation? This will clear your current chat history.')) {
+      setAiMessages([]);
+      localStorage.removeItem('aiChatHistory');
+    }
+  };
 
   // AI Chat Handler
   const handleAIChat = async (message, documentFile = null) => {
@@ -1990,19 +2009,29 @@ User Question: ${message}`;
                 <div>
                   <h2 className={`text-2xl font-bold ${textColor}`}>AI Financial Assistant</h2>
                   <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                    Chat or upload documents for analysis
+                    {aiMessages.length > 0 ? `${aiMessages.length} messages in conversation` : 'Chat or upload documents for analysis'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setShowAIChat(false);
-                  setAiMessages([]);
-                }}
-                className={`${hoverBg} p-2 rounded-lg transition`}
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {aiMessages.length > 0 && (
+                  <button
+                    onClick={startNewConversation}
+                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition flex items-center space-x-2"
+                    title="Start new conversation"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">New Chat</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAIChat(false)}
+                  className={`${hoverBg} p-2 rounded-lg transition`}
+                  title="Close chat"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {/* Messages Area */}
