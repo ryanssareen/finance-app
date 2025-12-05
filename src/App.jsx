@@ -72,7 +72,8 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [groqApiKey, setGroqApiKey] = useState(''); // User adds their free key from console.groq.com
+  // Groq API key from environment variable (set in Netlify dashboard or .env file)
+  const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
   const [viewMode, setViewMode] = useState('modern'); // classic or modern
   
   // Transactions & Categories
@@ -103,6 +104,12 @@ export default function App() {
     returnRate: 12, 
     inflationRate: 6 
   });
+  
+  // Custom Budgeting
+  const [customBudgets, setCustomBudgets] = useState({}); // { 'Food': 500, 'Rent': 1000, etc }
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [budgetCategory, setBudgetCategory] = useState('');
+  const [budgetAmount, setBudgetAmount] = useState('');
   
   // Business (keeping existing structure)
   const [businessRecords, setBusinessRecords] = useState([]);
@@ -438,17 +445,6 @@ export default function App() {
   const handleAIChat = async (message, documentFile = null) => {
     if (!message.trim() && !documentFile) return;
     
-    // Check if API key is configured
-    if (!groqApiKey) {
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '⚠️ Please configure your Groq API key in Settings. Get one free at console.groq.com - no payment required!',
-        timestamp: new Date().toISOString(),
-        error: true
-      }]);
-      return;
-    }
-
     // Add user message
     const userMessage = { 
       role: 'user', 
@@ -1037,16 +1033,110 @@ User Question: ${message}`;
             </div>
         {/* Charts Section */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Income vs Expense Donut Chart */}
+          {/* Investment Return Chart - LINE CHART */}
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Income vs Expenses</h3>
-            {totalIncome > 0 || totalExpense > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
+            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Return Analysis</h3>
+            {investments.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={investments.map(inv => ({
+                  name: inv.label,
+                  invested: inv.amount,
+                  returns: parseFloat(inv.nominalReturn)
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                  <XAxis dataKey="name" stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
+                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
+                  <Tooltip 
+                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="invested" stroke="#8b5cf6" strokeWidth={2} name="Invested Amount" />
+                  <Line type="monotone" dataKey="returns" stroke="#10b981" strokeWidth={2} name="Expected Returns" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                No investments yet
+              </p>
+            )}
+          </div>
+
+          {/* Investment Type Breakdown - PIE CHART */}
+          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
+            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Type Breakdown</h3>
+            {investments.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={Object.entries(
+                      investments.reduce((acc, inv) => {
+                        acc[inv.type] = (acc[inv.type] || 0) + inv.amount;
+                        return acc;
+                      }, {})
+                    ).map(([type, amount]) => ({
+                      name: type.charAt(0).toUpperCase() + type.slice(1),
+                      value: amount
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    dataKey="value"
+                    stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
+                    strokeWidth={2}
+                  >
+                    {Object.keys(investments.reduce((acc, inv) => { acc[inv.type] = 1; return acc; }, {})).map((type, index) => {
+                      const colors = { crypto: '#f59e0b', stocks: '#3b82f6', bonds: '#10b981', sip: '#8b5cf6', 'real estate': '#ec4899', fd: '#06b6d4', other: '#6b7280' };
+                      return <Cell key={`cell-${index}`} fill={colors[type] || '#6b7280'} />;
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                No investments yet
+              </p>
+            )}
+          </div>
+
+          {/* Budget Allocation Circle - RGB CODED DONUT */}
+          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
+            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Allocation (RGB)</h3>
+            {expenseTransactions.length > 0 || totalIncome > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={[
                       { name: 'Income', value: totalIncome, fill: '#10b981' },
-                      { name: 'Expenses', value: totalExpense, fill: '#ef4444' }
+                      { 
+                        name: 'Wants', 
+                        value: expenseTransactions
+                          .filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category))
+                          .reduce((sum, t) => sum + t.amount, 0),
+                        fill: '#ef4444'
+                      },
+                      { 
+                        name: 'Needs', 
+                        value: expenseTransactions
+                          .filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category))
+                          .reduce((sum, t) => sum + t.amount, 0),
+                        fill: '#3b82f6'
+                      }
                     ]}
                     cx="50%"
                     cy="50%"
@@ -1055,22 +1145,22 @@ User Question: ${message}`;
                     outerRadius={110}
                     innerRadius={70}
                     dataKey="value"
-                    strokeWidth={3}
                     stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
+                    strokeWidth={3}
                   >
                     <Cell fill="#10b981" />
                     <Cell fill="#ef4444" />
+                    <Cell fill="#3b82f6" />
                   </Pie>
                   <Tooltip 
                     formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
                     contentStyle={{
                       backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
                       border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
+                      borderRadius: '8px'
                     }}
                   />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -1080,54 +1170,36 @@ User Question: ${message}`;
             )}
           </div>
 
-          {/* Top Expense Categories Bar Chart */}
+          {/* Expenditure Breakdown - BAR CHART */}
           <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Top Expense Categories</h3>
+            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Expenditure Breakdown</h3>
             {expenseTransactions.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={300}>
                 <BarChart
-                  data={Object.entries(
-                    expenseTransactions.reduce((acc, t) => {
-                      acc[t.category] = (acc[t.category] || 0) + t.amount;
-                      return acc;
-                    }, {})
-                  )
-                    .sort(([, a], [, b]) => b - a)
-                    .slice(0, 5)
-                    .map(([category, amount]) => ({ category, amount }))}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                  data={[
+                    { category: 'Food', amount: expenseTransactions.filter(t => t.category === 'Food').reduce((sum, t) => sum + t.amount, 0), fill: '#10b981' },
+                    { category: 'Beverage', amount: expenseTransactions.filter(t => t.category === 'Entertainment').reduce((sum, t) => sum + t.amount, 0), fill: '#f59e0b' },
+                    { category: 'Utilities', amount: expenseTransactions.filter(t => t.category === 'Utilities').reduce((sum, t) => sum + t.amount, 0), fill: '#3b82f6' },
+                    { category: 'Entertainment', amount: expenseTransactions.filter(t => ['Shopping', 'Other'].includes(t.category)).reduce((sum, t) => sum + t.amount, 0), fill: '#ec4899' }
+                  ]}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis 
-                    dataKey="category" 
-                    stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                    angle={-25}
-                    textAnchor="end"
-                    height={80}
-                    interval={0}
-                  />
+                  <XAxis dataKey="category" stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
                   <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
                   <Tooltip 
                     formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
                     contentStyle={{
                       backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
                       border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      padding: '12px'
+                      borderRadius: '8px'
                     }}
                   />
-                  <Bar dataKey="amount" fill="#ef4444" radius={[8, 8, 0, 0]}>
-                    {Object.entries(
-                      expenseTransactions.reduce((acc, t) => {
-                        acc[t.category] = (acc[t.category] || 0) + t.amount;
-                        return acc;
-                      }, {})
-                    )
-                      .sort(([, a], [, b]) => b - a)
-                      .slice(0, 5)
-                      .map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#ef4444', '#f87171', '#fb923c', '#fbbf24', '#facc15'][index % 5]} />
-                      ))}
+                  <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                    <Cell fill="#10b981" />
+                    <Cell fill="#f59e0b" />
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#ec4899" />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -1268,6 +1340,13 @@ User Question: ${message}`;
               </div>
               <div className="flex space-x-3">
                 <button
+                  onClick={() => setShowBudgetModal(true)}
+                  className="bg-purple-500 text-white px-4 py-3 rounded-lg hover:bg-purple-600 transition flex items-center space-x-2"
+                >
+                  <Wallet className="w-5 h-5" />
+                  <span>Set Budgets</span>
+                </button>
+                <button
                   onClick={() => openCategoryModal('expense')}
                   className="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
                 >
@@ -1290,6 +1369,46 @@ User Question: ${message}`;
                 </button>
               </div>
             </div>
+
+            {/* Budget Progress Bars */}
+            {Object.keys(customBudgets).length > 0 && (
+              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
+                <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Tracking</h3>
+                <div className="space-y-4">
+                  {Object.entries(customBudgets).map(([category, budgetLimit]) => {
+                    const spent = expenseTransactions
+                      .filter(t => t.category === category)
+                      .reduce((sum, t) => sum + t.amount, 0);
+                    const percentage = (spent / budgetLimit) * 100;
+                    const isOverBudget = spent > budgetLimit;
+                    
+                    return (
+                      <div key={category}>
+                        <div className="flex justify-between mb-2">
+                          <span className={`font-medium ${textColor}`}>{category}</span>
+                          <span className={`font-semibold ${isOverBudget ? 'text-red-500' : 'text-green-500'}`}>
+                            {currencySymbol}{spent.toFixed(2)} / {currencySymbol}{budgetLimit.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full transition-all ${
+                              isOverBudget ? 'bg-red-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          />
+                        </div>
+                        {isOverBudget && (
+                          <p className="text-xs text-red-500 mt-1">
+                            ⚠️ Over budget by {currencySymbol}{(spent - budgetLimit).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {expenseTransactions.length === 0 ? (
               <div className={`${cardBg} border ${borderColor} rounded-2xl p-12 text-center`}>
@@ -1528,33 +1647,6 @@ User Question: ${message}`;
                     <p className="font-medium">Modern</p>
                     <p className="text-xs text-gray-500 mt-1">Enhanced visuals</p>
                   </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>
-                  AI Assistant API Key (Groq - Free)
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    value={groqApiKey}
-                    onChange={(e) => setGroqApiKey(e.target.value)}
-                    placeholder="gsk-..."
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  />
-                  <p className="text-sm text-gray-500">
-                    Get your free API key from{' '}
-                    <a 
-                      href="https://console.groq.com/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-500 hover:text-emerald-400 underline"
-                    >
-                      console.groq.com
-                    </a>
-                    {' '}(No payment required - completely free!)
-                  </p>
                 </div>
               </div>
 
@@ -2001,6 +2093,78 @@ User Question: ${message}`;
                   className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Modal */}
+      {showBudgetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`text-2xl font-bold ${textColor}`}>Set Category Budget</h2>
+              <button onClick={() => {
+                setShowBudgetModal(false);
+                setBudgetCategory('');
+                setBudgetAmount('');
+              }} className={hoverBg + ' p-2 rounded-lg'}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>Category</label>
+                <select
+                  value={budgetCategory}
+                  onChange={(e) => setBudgetCategory(e.target.value)}
+                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
+                >
+                  <option value="">Select a category</option>
+                  {expenseCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>Monthly Budget Limit</label>
+                <input
+                  type="number"
+                  value={budgetAmount}
+                  onChange={(e) => setBudgetAmount(e.target.value)}
+                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  onClick={() => {
+                    setShowBudgetModal(false);
+                    setBudgetCategory('');
+                    setBudgetAmount('');
+                  }}
+                  className={`flex-1 ${hoverBg} py-3 rounded-lg transition`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (budgetCategory && budgetAmount) {
+                      setCustomBudgets({...customBudgets, [budgetCategory]: parseFloat(budgetAmount)});
+                      setShowBudgetModal(false);
+                      setBudgetCategory('');
+                      setBudgetAmount('');
+                    }
+                  }}
+                  className="flex-1 bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600 transition"
+                >
+                  Set Budget
                 </button>
               </div>
             </div>
