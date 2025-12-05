@@ -469,7 +469,7 @@ export default function App() {
     }
   };
 
-  // Process uploaded file
+  // Process uploaded file with OCR
   const handleFileSelected = async (file) => {
     if (!file) return;
     
@@ -479,34 +479,134 @@ export default function App() {
       // Add upload message
       setAiMessages(prev => [...prev, {
         role: 'user',
-        content: `📎 Uploaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+        content: `📎 Uploading: ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`,
         timestamp: new Date().toISOString()
       }]);
 
       // Read file as base64
       const reader = new FileReader();
       reader.onload = async () => {
-        // Show AI response
-        setAiMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `📄 Document received: **${file.name}**\n\n` +
-            `⚠️ **Note:** The current AI model (Groq LLaMA 3.3) doesn't support image/PDF analysis yet.\n\n` +
-            `However, I can help you manually process this receipt or document!\n\n` +
-            `**Please tell me:**\n` +
-            `1️⃣ Total amount?\n` +
-            `2️⃣ Category (Food, Transportation, Shopping, etc.)?\n` +
-            `3️⃣ Date of transaction?\n` +
-            `4️⃣ Merchant/description?\n\n` +
-            `Just type the details and I'll help you add it to your expense tracking! 💰`,
-          timestamp: new Date().toISOString()
-        }]);
-        setAiLoading(false);
+        try {
+          const base64Data = reader.result.split(',')[1];
+          
+          // Update to processing
+          setAiMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1].content = `📎 Processing: ${file.name}... 🔍`;
+            return updated;
+          });
+
+          // Use OCR.space free API to extract text
+          const formData = new FormData();
+          formData.append('base64Image', `data:${file.type};base64,${base64Data}`);
+          formData.append('apikey', 'K87899142388957'); // Free OCR.space API key
+          formData.append('language', 'eng');
+          formData.append('isOverlayRequired', 'false');
+          formData.append('detectOrientation', 'true');
+          formData.append('scale', 'true');
+          formData.append('OCREngine', '2');
+
+          const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+            method: 'POST',
+            body: formData
+          });
+
+          const ocrResult = await ocrResponse.json();
+          
+          if (ocrResult.IsErroredOnProcessing) {
+            throw new Error(ocrResult.ErrorMessage || 'OCR processing failed');
+          }
+
+          const extractedText = ocrResult.ParsedResults?.[0]?.ParsedText || '';
+          
+          if (!extractedText.trim()) {
+            throw new Error('No text found in image');
+          }
+
+          // Update to success
+          setAiMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1].content = `📎 Uploaded: ${file.name} ✓`;
+            return updated;
+          });
+
+          // Send extracted text to AI for analysis
+          const contextText = `I've extracted text from a receipt/invoice image. Please analyze it and extract:
+1. Total amount/price
+2. Merchant/store name
+3. Date (if available)
+4. Category (Food, Transportation, Shopping, Entertainment, etc.)
+5. Any other relevant transaction details
+
+Here's the extracted text:
+${extractedText}
+
+My current financial context:
+- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}
+- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}
+- Balance: ${currencySymbol}${balance.toFixed(2)}
+
+Please provide a clear summary in this format:
+💰 Amount: $X.XX
+🏪 Merchant: [name]
+📅 Date: [date if found]
+📁 Category: [suggested category]
+📝 Description: [brief description]`;
+
+          const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${groqApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a helpful financial assistant that analyzes receipt text and extracts transaction details. Be precise and format your response clearly.'
+                },
+                {
+                  role: 'user',
+                  content: contextText
+                }
+              ],
+              max_tokens: 800,
+              temperature: 0.3
+            })
+          });
+
+          if (!aiResponse.ok) {
+            throw new Error('AI analysis failed');
+          }
+
+          const aiData = await aiResponse.json();
+          const analysis = aiData.choices[0].message.content;
+
+          // Show AI analysis
+          setAiMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `📄 **Receipt Analysis Complete!**\n\n${analysis}\n\n✅ Would you like me to help you add this transaction to your expenses?`,
+            timestamp: new Date().toISOString()
+          }]);
+
+        } catch (error) {
+          console.error('OCR/AI Error:', error);
+          setAiMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `❌ **Processing Error:** ${error.message}\n\n**Troubleshooting:**\n• Make sure the image is clear and readable\n• Try a different photo angle\n• Ensure text is visible in the image\n\nYou can also manually tell me the receipt details and I'll help you add it!`,
+            timestamp: new Date().toISOString(),
+            error: true
+          }]);
+        } finally {
+          setAiLoading(false);
+        }
       };
       
       reader.onerror = () => {
         setAiMessages(prev => [...prev, {
           role: 'assistant',
-          content: `❌ Error reading file. Please try again or use a different file.`,
+          content: `❌ Error reading file. Please try again.`,
           timestamp: new Date().toISOString(),
           error: true
         }]);
@@ -519,7 +619,7 @@ export default function App() {
       console.error('File upload error:', error);
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: `❌ Error uploading file: ${error.message}`,
+        content: `❌ Upload error: ${error.message}`,
         timestamp: new Date().toISOString(),
         error: true
       }]);
