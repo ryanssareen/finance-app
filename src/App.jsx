@@ -460,6 +460,73 @@ export default function App() {
     }
   };
 
+  // Handle file upload - simplified browser file picker
+  const handleFileUploadForAI = () => {
+    // Trigger the hidden file input
+    const fileInput = document.getElementById('ai-file-input');
+    if (fileInput) {
+      fileInput.click();
+    }
+  };
+
+  // Process uploaded file
+  const handleFileSelected = async (file) => {
+    if (!file) return;
+    
+    try {
+      setAiLoading(true);
+      
+      // Add upload message
+      setAiMessages(prev => [...prev, {
+        role: 'user',
+        content: `📎 Uploaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+        timestamp: new Date().toISOString()
+      }]);
+
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        // Show AI response
+        setAiMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `📄 Document received: **${file.name}**\n\n` +
+            `⚠️ **Note:** The current AI model (Groq LLaMA 3.3) doesn't support image/PDF analysis yet.\n\n` +
+            `However, I can help you manually process this receipt or document!\n\n` +
+            `**Please tell me:**\n` +
+            `1️⃣ Total amount?\n` +
+            `2️⃣ Category (Food, Transportation, Shopping, etc.)?\n` +
+            `3️⃣ Date of transaction?\n` +
+            `4️⃣ Merchant/description?\n\n` +
+            `Just type the details and I'll help you add it to your expense tracking! 💰`,
+          timestamp: new Date().toISOString()
+        }]);
+        setAiLoading(false);
+      };
+      
+      reader.onerror = () => {
+        setAiMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `❌ Error reading file. Please try again or use a different file.`,
+          timestamp: new Date().toISOString(),
+          error: true
+        }]);
+        setAiLoading(false);
+      };
+      
+      reader.readAsDataURL(file);
+      
+    } catch (error) {
+      console.error('File upload error:', error);
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `❌ Error uploading file: ${error.message}`,
+        timestamp: new Date().toISOString(),
+        error: true
+      }]);
+      setAiLoading(false);
+    }
+  };
+
   // AI Chat Handler
   const handleAIChat = async (message, documentFile = null) => {
     if (!message.trim() && !documentFile) return;
@@ -2126,19 +2193,21 @@ User Question: ${message}`;
                 accept="image/*,application/pdf"
                 className="hidden"
                 onChange={(e) => {
-                  if (e.target.files[0]) {
-                    handleAIChat(aiInput || "Analyze this document", e.target.files[0]);
-                    e.target.value = '';
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileSelected(e.target.files[0]);
+                    e.target.value = ''; // Reset input
                   }
                 }}
               />
               <div className="flex space-x-3">
                 <button
-                  onClick={() => document.getElementById('ai-file-input').click()}
-                  className={`${hoverBg} p-3 rounded-lg transition`}
+                  onClick={handleFileUploadForAI}
+                  className={`bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 p-3 rounded-lg transition flex items-center space-x-2`}
                   disabled={aiLoading}
+                  title="Upload receipt or document"
                 >
                   <Upload className="w-5 h-5" />
+                  <span className="hidden sm:inline text-sm font-medium">Upload</span>
                 </button>
                 <input
                   type="text"
