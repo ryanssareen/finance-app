@@ -445,6 +445,17 @@ export default function App() {
   const handleAIChat = async (message, documentFile = null) => {
     if (!message.trim() && !documentFile) return;
     
+    // Check if API key is available
+    if (!groqApiKey) {
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '⚠️ AI Assistant is not configured. The API key environment variable is missing. Please contact the site administrator.',
+        timestamp: new Date().toISOString(),
+        error: true
+      }]);
+      return;
+    }
+    
     // Add user message
     const userMessage = { 
       role: 'user', 
@@ -473,7 +484,7 @@ User Question: ${message}`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile', // Fast, free, accurate
+          model: 'llama-3.3-70b-versatile',
           messages: [
             {
               role: 'system',
@@ -490,7 +501,9 @@ User Question: ${message}`;
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Groq API Error Response:', errorData);
+        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
@@ -505,7 +518,7 @@ User Question: ${message}`;
       console.error('Groq API Error:', error);
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please check your API key in Settings and try again.',
+        content: `❌ AI Assistant Error: ${error.message || 'Unknown error occurred'}. Please try again or contact support if the issue persists.`,
         timestamp: new Date().toISOString(),
         error: true
       }]);
@@ -1655,6 +1668,30 @@ User Question: ${message}`;
                 <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
                   <p className={textColor}><span className="font-medium">Username:</span> {userData?.username || currentUser?.displayName}</p>
                   <p className={textColor}><span className="font-medium">Email:</span> {currentUser?.email}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>AI Assistant Status</label>
+                <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
+                  <div className="flex items-center space-x-2">
+                    {groqApiKey ? (
+                      <>
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <p className="text-green-500 font-medium">Active - API Key Configured ✓</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <p className="text-red-500 font-medium">Inactive - API Key Missing ✗</p>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {groqApiKey 
+                      ? 'Your AI assistant is ready to help with financial advice!' 
+                      : 'Environment variable VITE_GROQ_API_KEY not found. Please set it in Netlify dashboard.'}
+                  </p>
                 </div>
               </div>
             </div>
