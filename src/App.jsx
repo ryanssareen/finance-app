@@ -72,6 +72,8 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [groqApiKey, setGroqApiKey] = useState(''); // User adds their free key from console.groq.com
+  const [viewMode, setViewMode] = useState('modern'); // classic or modern
   
   // Transactions & Categories
   const [transactions, setTransactions] = useState([]);
@@ -435,11 +437,22 @@ export default function App() {
   // AI Chat Handler
   const handleAIChat = async (message, documentFile = null) => {
     if (!message.trim() && !documentFile) return;
+    
+    // Check if API key is configured
+    if (!groqApiKey) {
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '⚠️ Please configure your Groq API key in Settings. Get one free at console.groq.com - no payment required!',
+        timestamp: new Date().toISOString(),
+        error: true
+      }]);
+      return;
+    }
 
     // Add user message
     const userMessage = { 
       role: 'user', 
-      content: documentFile ? `[Document Upload] ${message || 'Please analyze this document'}` : message,
+      content: message,
       timestamp: new Date().toISOString()
     };
     setAiMessages(prev => [...prev, userMessage]);
@@ -447,71 +460,45 @@ export default function App() {
     setAiLoading(true);
 
     try {
-      const messages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: documentFile 
-                ? `I'm uploading a financial document. Please analyze it and extract key information like amounts, dates, categories, merchant names, etc. Here's what I need: ${message || 'Extract transaction details'}\n\nMy current financial context:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Top expense categories: ${expenseTransactions.length > 0 ? Object.entries(expenseTransactions.reduce((acc, t) => {
-                    acc[t.category] = (acc[t.category] || 0) + t.amount;
-                    return acc;
-                  }, {})).sort(([,a], [,b]) => b - a).slice(0, 3).map(([cat]) => cat).join(', ') : 'None yet'}`
-                : `I need help with my finances. Here's my current situation:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}\n\nQuestion: ${message}`
-            }
-          ]
-        }
-      ];
+      // Build financial context
+      const contextText = `Financial Context:
+- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}
+- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}
+- Balance: ${currencySymbol}${balance.toFixed(2)}
+- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}
 
-      // Add document if provided
-      if (documentFile) {
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsDataURL(documentFile);
-        });
+User Question: ${message}`;
 
-        const mediaType = documentFile.type === 'application/pdf' 
-          ? 'application/pdf'
-          : documentFile.type.startsWith('image/') 
-            ? documentFile.type 
-            : 'application/pdf';
-
-        const contentType = documentFile.type === 'application/pdf' ? 'document' : 'image';
-
-        messages[0].content.push({
-          type: contentType,
-          source: {
-            type: 'base64',
-            media_type: mediaType,
-            data: base64Data
-          }
-        });
-      }
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Call Groq API
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: messages
+          model: 'llama-3.3-70b-versatile', // Fast, free, accurate
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful financial assistant. Analyze financial data, provide budgeting advice, and help users manage their money wisely. Be concise and practical.'
+            },
+            {
+              role: 'user',
+              content: contextText
+            }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7
         })
       });
 
       if (!response.ok) {
-        throw new Error('AI request failed');
+        throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
-      const aiResponse = data.content[0].text;
+      const aiResponse = data.choices[0].message.content;
 
       setAiMessages(prev => [...prev, {
         role: 'assistant',
@@ -519,10 +506,10 @@ export default function App() {
         timestamp: new Date().toISOString()
       }]);
     } catch (error) {
-      console.error('AI Error:', error);
+      console.error('Groq API Error:', error);
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: 'Sorry, I encountered an error. Please check your API key in Settings and try again.',
         timestamp: new Date().toISOString(),
         error: true
       }]);
@@ -1409,9 +1396,36 @@ export default function App() {
         {/* SETTINGS PAGE */}
         {currentPage === 'settings' && (
           <div className="space-y-6">
-            <h1 className={`text-3xl font-bold ${textColor}`}>Settings</h1>
+            {/* Greeting */}
+            <div className="flex items-center justify-between">
+              <h1 className={`text-3xl font-bold ${textColor}`}>
+                Hi, {userData?.username || currentUser?.displayName || 'User'}! 👋
+              </h1>
+            </div>
             
             <div className={`${cardBg} border ${borderColor} rounded-2xl p-6 space-y-6`}>
+              {/* Financial Overview Section */}
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>Financial Overview</label>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-green-500`}>
+                    <p className="text-sm text-gray-500">Total Income</p>
+                    <p className={`text-2xl font-bold text-green-500`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{incomeTransactions.length} transactions</p>
+                  </div>
+                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-red-500`}>
+                    <p className="text-sm text-gray-500">Total Expenses</p>
+                    <p className={`text-2xl font-bold text-red-500`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{expenseTransactions.length} transactions</p>
+                  </div>
+                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-blue-500`}>
+                    <p className="text-sm text-gray-500">Total Investments</p>
+                    <p className={`text-2xl font-bold text-blue-500`}>{currencySymbol}{investments.reduce((sum, inv) => sum + inv.amount, 0).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{investments.length} investments</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Currency</label>
                 <select
@@ -1484,6 +1498,63 @@ export default function App() {
                     <Moon className="w-6 h-6 mx-auto" />
                     <p className="mt-2">Dark</p>
                   </button>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>View Mode</label>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setViewMode('classic')}
+                    className={`flex-1 py-3 rounded-lg border-2 transition ${
+                      viewMode === 'classic'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : `${borderColor} ${hoverBg}`
+                    }`}
+                  >
+                    <div className="text-2xl mx-auto mb-2">📋</div>
+                    <p className="font-medium">Classic</p>
+                    <p className="text-xs text-gray-500 mt-1">Simple layout</p>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('modern')}
+                    className={`flex-1 py-3 rounded-lg border-2 transition ${
+                      viewMode === 'modern'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : `${borderColor} ${hoverBg}`
+                    }`}
+                  >
+                    <div className="text-2xl mx-auto mb-2">✨</div>
+                    <p className="font-medium">Modern</p>
+                    <p className="text-xs text-gray-500 mt-1">Enhanced visuals</p>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>
+                  AI Assistant API Key (Groq - Free)
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={groqApiKey}
+                    onChange={(e) => setGroqApiKey(e.target.value)}
+                    placeholder="gsk-..."
+                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Get your free API key from{' '}
+                    <a 
+                      href="https://console.groq.com/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-emerald-500 hover:text-emerald-400 underline"
+                    >
+                      console.groq.com
+                    </a>
+                    {' '}(No payment required - completely free!)
+                  </p>
                 </div>
               </div>
 
@@ -1681,6 +1752,23 @@ export default function App() {
 
             <div className="space-y-4">
               <div>
+                <label className={`block mb-2 font-medium ${textColor}`}>Investment Type</label>
+                <select
+                  value={investmentForm.type}
+                  onChange={(e) => setInvestmentForm({...investmentForm, type: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                >
+                  <option value="stocks">📈 Stocks</option>
+                  <option value="crypto">₿ Crypto</option>
+                  <option value="bonds">🏦 Bonds</option>
+                  <option value="sip">💰 SIP/Mutual Funds</option>
+                  <option value="real estate">🏠 Real Estate</option>
+                  <option value="fd">🏛️ Fixed Deposit</option>
+                  <option value="other">📊 Other</option>
+                </select>
+              </div>
+
+              <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Investment Name</label>
                 <input
                   type="text"
@@ -1693,14 +1781,19 @@ export default function App() {
 
               <div>
                 <label className={`block mb-2 font-medium ${textColor}`}>Principal Amount</label>
-                <input
-                  type="number"
-                  value={investmentForm.amount}
-                  onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="0.00"
-                  step="0.01"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={investmentForm.amount}
+                    onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
+                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
+                    placeholder="0.00"
+                    step="0.01"
+                  />
+                  <div className="absolute right-3 top-3 text-sm text-gray-500">
+                    Available: {currencySymbol}{balance.toFixed(2)}
+                  </div>
+                </div>
               </div>
 
               <div>
