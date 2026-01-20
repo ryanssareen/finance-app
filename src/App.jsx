@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { DollarSign, TrendingUp, Briefcase, Settings, LogOut, Plus, Moon, Sun, ArrowRight, Mail, Phone, MapPin, Upload, FileText, Home, Building, Building2, Wallet, CheckSquare, Square, X, Menu, Shield, Zap, TrendingDown, Edit2, Trash2 } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { DollarSign, TrendingUp, Briefcase, Settings, LogOut, Plus, Moon, Sun, ArrowRight, Mail, Phone, MapPin, Upload, FileText, Home, Building, Building2, Wallet, CheckSquare, Square, X, Menu, Shield, Zap, TrendingDown, Edit2, Trash2, Sparkles, PiggyBank, CreditCard, Target, ChevronRight, Bell, Search, Calendar, Filter, Download, RefreshCw } from 'lucide-react';
 
 // Import Firebase helpers
 import { 
@@ -70,15 +70,13 @@ export default function App() {
   // AI Assistant
   const [showAIChat, setShowAIChat] = useState(false);
   const [aiMessages, setAiMessages] = useState(() => {
-    // Load saved conversation from localStorage
     const saved = localStorage.getItem('aiChatHistory');
     return saved ? JSON.parse(saved) : [];
   });
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  // Groq API key from environment variable (set in Netlify dashboard or .env file)
   const groqApiKey = import.meta.env.VITE_GROQ_API_KEY;
-  const [viewMode, setViewMode] = useState('modern'); // classic or modern
+  const [viewMode, setViewMode] = useState('modern');
   
   // Transactions & Categories
   const [transactions, setTransactions] = useState([]);
@@ -110,12 +108,12 @@ export default function App() {
   });
   
   // Custom Budgeting
-  const [customBudgets, setCustomBudgets] = useState({}); // { 'Food': 500, 'Rent': 1000, etc }
+  const [customBudgets, setCustomBudgets] = useState({});
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [budgetCategory, setBudgetCategory] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
   
-  // Business (keeping existing structure)
+  // Business
   const [businessRecords, setBusinessRecords] = useState([]);
   const [showBusinessForm, setShowBusinessForm] = useState(false);
   const [businessForm, setBusinessForm] = useState({ 
@@ -151,17 +149,14 @@ export default function App() {
         setAppPage('landing');
       }
     });
-    
     return () => unsubscribe();
   }, []);
 
-  // Load theme
   useEffect(() => {
     const savedTheme = localStorage.getItem('financeAppTheme');
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  // Save AI messages to localStorage whenever they change
   useEffect(() => {
     if (aiMessages.length > 0) {
       localStorage.setItem('aiChatHistory', JSON.stringify(aiMessages));
@@ -172,60 +167,41 @@ export default function App() {
     localStorage.setItem('financeAppTheme', theme);
   }, [theme]);
 
-  // Load user data from Firestore
   const loadUserData = async (userId) => {
     const txResult = await getTransactions(userId);
-    if (txResult.success) {
-      setTransactions(txResult.transactions);
-    }
-    
+    if (txResult.success) setTransactions(txResult.transactions);
     const invResult = await getInvestments(userId);
-    if (invResult.success) {
-      setInvestments(invResult.investments);
-    }
+    if (invResult.success) setInvestments(invResult.investments);
   };
 
-  // Receipt Upload & Validation
   const handleReceiptUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       alert('Invalid receipt format! Please upload a JPG, PNG, or WEBP image.');
       e.target.value = '';
       return;
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Receipt file is too large! Maximum size is 5MB.');
       e.target.value = '';
       return;
     }
-    
     const reader = new FileReader();
     reader.onload = (event) => {
-      setTransactionForm({ 
-        ...transactionForm,
-        receiptImage: event.target.result
-      });
+      setTransactionForm({ ...transactionForm, receiptImage: event.target.result });
     };
     reader.readAsDataURL(file);
   };
 
-  // Authentication Functions
   const handleAuth = async () => {
     setAuthError('');
     setAuthLoading(true);
-
     try {
       if (isLogin) {
         const result = await signInUser(email, password);
-        if (!result.success) {
-          setAuthError(result.error);
-        }
+        if (!result.success) setAuthError(result.error);
       } else {
         if (!username.trim()) {
           setAuthError('Username is required');
@@ -233,14 +209,11 @@ export default function App() {
           return;
         }
         const result = await signUpUser(email, password, username, currency);
-        if (!result.success) {
-          setAuthError(result.error);
-        }
+        if (!result.success) setAuthError(result.error);
       }
     } catch (error) {
       setAuthError('An error occurred. Please try again.');
     }
-    
     setAuthLoading(false);
     setEmail('');
     setPassword('');
@@ -257,7 +230,6 @@ export default function App() {
       alert('Please enter your email address');
       return;
     }
-    
     const result = await resetPassword(resetEmail);
     if (result.success) {
       alert(result.message);
@@ -268,19 +240,16 @@ export default function App() {
     }
   };
 
-  // Transaction Functions
   const addTransaction = async () => {
     if (!transactionForm.amount || !transactionForm.label) {
       alert('Please fill in all required fields');
       return;
     }
-
     const newTransaction = { 
       ...transactionForm, 
       amount: parseFloat(transactionForm.amount),
       userId: currentUser.uid
     };
-
     const result = await addTransactionFirebase(currentUser.uid, newTransaction);
     if (result.success) {
       loadUserData(currentUser.uid);
@@ -300,16 +269,11 @@ export default function App() {
 
   const deleteTransaction = async (transactionId) => {
     if (!confirm('Delete this transaction?')) return;
-    
     const result = await deleteTransactionFirebase(currentUser.uid, transactionId);
-    if (result.success) {
-      loadUserData(currentUser.uid);
-    } else {
-      alert('Error deleting transaction: ' + result.error);
-    }
+    if (result.success) loadUserData(currentUser.uid);
+    else alert('Error deleting transaction: ' + result.error);
   };
 
-  // Category Management
   const openCategoryModal = (type) => {
     setCategoryModalType(type);
     setNewCategoryName('');
@@ -321,7 +285,6 @@ export default function App() {
       alert('Please enter a category name');
       return;
     }
-
     const result = await addCustomCategory(currentUser.uid, categoryModalType, newCategoryName.trim());
     if (result.success) {
       if (categoryModalType === 'income') {
@@ -331,12 +294,8 @@ export default function App() {
       }
       setNewCategoryName('');
       setShowCategoryModal(false);
-      
-      // Reload user data to sync
       const userData = await getUserData(currentUser.uid);
-      if (userData.success) {
-        setUserData(userData.data);
-      }
+      if (userData.success) setUserData(userData.data);
     } else {
       alert(result.error);
     }
@@ -344,7 +303,6 @@ export default function App() {
 
   const removeCategory = async (categoryName) => {
     if (!confirm(`Delete category "${categoryName}"?`)) return;
-
     const result = await deleteCustomCategory(currentUser.uid, categoryModalType, categoryName);
     if (result.success) {
       if (categoryModalType === 'income') {
@@ -352,37 +310,27 @@ export default function App() {
       } else {
         setExpenseCategories(expenseCategories.filter(c => c !== categoryName));
       }
-      
-      // Reload user data to sync
       const userData = await getUserData(currentUser.uid);
-      if (userData.success) {
-        setUserData(userData.data);
-      }
+      if (userData.success) setUserData(userData.data);
     } else {
       alert(result.error);
     }
   };
 
-  // Investment Functions
   const addInvestment = async () => {
     if (!investmentForm.amount || !investmentForm.label) {
       alert('Please fill in all required fields');
       return;
     }
-
     const principal = parseFloat(investmentForm.amount);
-    
-    // Balance Validation - Per whiteboard specs
     if (principal <= 0) {
       alert('❌ Investment amount must be greater than zero');
       return;
     }
-    
     if (principal > balance) {
-      alert(`❌ Insufficient balance!\n\nAvailable: ${currencySymbol}${balance.toFixed(2)}\nRequested: ${currencySymbol}${principal.toFixed(2)}\n\nPlease add funds or reduce investment amount.`);
+      alert(`❌ Insufficient balance!\n\nAvailable: ${currencySymbol}${balance.toFixed(2)}\nRequested: ${currencySymbol}${principal.toFixed(2)}`);
       return;
     }
-
     const months = parseInt(investmentForm.duration);
     const annualReturn = parseFloat(investmentForm.returnRate);
     const inflation = parseFloat(investmentForm.inflationRate);
@@ -398,25 +346,16 @@ export default function App() {
       realGain: (realReturn - principal).toFixed(2),
       userId: currentUser.uid
     };
-
     const result = await addInvestmentFirebase(currentUser.uid, newInvestment);
     if (result.success) {
       loadUserData(currentUser.uid);
-      setInvestmentForm({ 
-        type: 'sip', 
-        amount: '', 
-        label: '', 
-        duration: 12, 
-        returnRate: 12, 
-        inflationRate: 6 
-      });
+      setInvestmentForm({ type: 'sip', amount: '', label: '', duration: 12, returnRate: 12, inflationRate: 6 });
       setShowInvestmentForm(false);
     } else {
       alert('Error adding investment: ' + result.error);
     }
   };
 
-  // Business Functions (keep existing localStorage logic for now)
   const addBusinessRecord = () => {
     if (!businessForm.amount || !businessForm.label) {
       alert('Please fill in all fields');
@@ -424,27 +363,14 @@ export default function App() {
     }
     const amount = parseFloat(businessForm.amount);
     const taxAmount = businessForm.type === 'profit' ? (amount * businessForm.taxRate / 100) : 0;
-    const newRecord = { 
-      id: Date.now(), 
-      ...businessForm, 
-      amount, 
-      taxAmount, 
-      netAmount: amount - taxAmount 
-    };
+    const newRecord = { id: Date.now(), ...businessForm, amount, taxAmount, netAmount: amount - taxAmount };
     const updatedRecords = [...businessRecords, newRecord];
     setBusinessRecords(updatedRecords);
     localStorage.setItem(`business_${currentUser.uid}`, JSON.stringify(updatedRecords));
-    setBusinessForm({ 
-      type: 'profit', 
-      amount: '', 
-      label: '', 
-      taxRate: 0, 
-      date: new Date().toISOString().split('T')[0] 
-    });
+    setBusinessForm({ type: 'profit', amount: '', label: '', taxRate: 0, date: new Date().toISOString().split('T')[0] });
     setShowBusinessForm(false);
   };
 
-  // Load business records from localStorage
   useEffect(() => {
     if (currentUser) {
       const saved = localStorage.getItem(`business_${currentUser.uid}`);
@@ -452,7 +378,6 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // New Conversation Handler
   const startNewConversation = () => {
     if (confirm('Start a new conversation? This will clear your current chat history.')) {
       setAiMessages([]);
@@ -460,264 +385,39 @@ export default function App() {
     }
   };
 
-  // Handle file upload - simplified browser file picker
-  const handleFileUploadForAI = () => {
-    // Trigger the hidden file input
-    const fileInput = document.getElementById('ai-file-input');
-    if (fileInput) {
-      fileInput.click();
-    }
-  };
-
-  // Process uploaded file with OCR
-  const handleFileSelected = async (file) => {
-    if (!file) return;
-    
-    try {
-      setAiLoading(true);
-      
-      // Add upload message
-      setAiMessages(prev => [...prev, {
-        role: 'user',
-        content: `📎 Uploading: ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`,
-        timestamp: new Date().toISOString()
-      }]);
-
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64Data = reader.result.split(',')[1];
-          
-          // Update to processing
-          setAiMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1].content = `📎 Processing: ${file.name}... 🔍`;
-            return updated;
-          });
-
-          // Use OCR.space free API to extract text
-          const formData = new FormData();
-          formData.append('base64Image', `data:${file.type};base64,${base64Data}`);
-          formData.append('apikey', 'K87899142388957'); // Free OCR.space API key
-          formData.append('language', 'eng');
-          formData.append('isOverlayRequired', 'false');
-          formData.append('detectOrientation', 'true');
-          formData.append('scale', 'true');
-          formData.append('OCREngine', '2');
-
-          const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
-            method: 'POST',
-            body: formData
-          });
-
-          const ocrResult = await ocrResponse.json();
-          
-          if (ocrResult.IsErroredOnProcessing) {
-            throw new Error(ocrResult.ErrorMessage || 'OCR processing failed');
-          }
-
-          const extractedText = ocrResult.ParsedResults?.[0]?.ParsedText || '';
-          
-          if (!extractedText.trim()) {
-            throw new Error('No text found in image');
-          }
-
-          // Update to success
-          setAiMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1].content = `📎 Uploaded: ${file.name} ✓`;
-            return updated;
-          });
-
-          // Send extracted text to AI for analysis
-          const contextText = `I've extracted text from a receipt/invoice image. Please analyze it and extract:
-1. Total amount/price
-2. Merchant/store name
-3. Date (if available)
-4. Category (Food, Transportation, Shopping, Entertainment, etc.)
-5. Any other relevant transaction details
-
-Here's the extracted text:
-${extractedText}
-
-My current financial context:
-- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}
-- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}
-- Balance: ${currencySymbol}${balance.toFixed(2)}
-
-Please provide a clear summary in this format:
-💰 Amount: $X.XX
-🏪 Merchant: [name]
-📅 Date: [date if found]
-📁 Category: [suggested category]
-📝 Description: [brief description]`;
-
-          const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${groqApiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a helpful financial assistant that analyzes receipt text and extracts transaction details. Be precise and format your response clearly.'
-                },
-                {
-                  role: 'user',
-                  content: contextText
-                }
-              ],
-              max_tokens: 800,
-              temperature: 0.3
-            })
-          });
-
-          if (!aiResponse.ok) {
-            throw new Error('AI analysis failed');
-          }
-
-          const aiData = await aiResponse.json();
-          const analysis = aiData.choices[0].message.content;
-
-          // Show AI analysis
-          setAiMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `📄 **Receipt Analysis Complete!**\n\n${analysis}\n\n✅ Would you like me to help you add this transaction to your expenses?`,
-            timestamp: new Date().toISOString()
-          }]);
-
-        } catch (error) {
-          console.error('OCR/AI Error:', error);
-          setAiMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `❌ **Processing Error:** ${error.message}\n\n**Troubleshooting:**\n• Make sure the image is clear and readable\n• Try a different photo angle\n• Ensure text is visible in the image\n\nYou can also manually tell me the receipt details and I'll help you add it!`,
-            timestamp: new Date().toISOString(),
-            error: true
-          }]);
-        } finally {
-          setAiLoading(false);
-        }
-      };
-      
-      reader.onerror = () => {
-        setAiMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `❌ Error reading file. Please try again.`,
-          timestamp: new Date().toISOString(),
-          error: true
-        }]);
-        setAiLoading(false);
-      };
-      
-      reader.readAsDataURL(file);
-      
-    } catch (error) {
-      console.error('File upload error:', error);
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `❌ Upload error: ${error.message}`,
-        timestamp: new Date().toISOString(),
-        error: true
-      }]);
-      setAiLoading(false);
-    }
-  };
-
-  // AI Chat Handler
-  const handleAIChat = async (message, documentFile = null) => {
-    if (!message.trim() && !documentFile) return;
-    
-    // Check if API key is available
+  const handleAIChat = async (message) => {
+    if (!message.trim()) return;
     if (!groqApiKey) {
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '⚠️ AI Assistant is not configured. The API key environment variable is missing. Please contact the site administrator.',
-        timestamp: new Date().toISOString(),
-        error: true
-      }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: '⚠️ AI Assistant is not configured.', timestamp: new Date().toISOString(), error: true }]);
       return;
     }
-    
-    // Add user message
-    const userMessage = { 
-      role: 'user', 
-      content: message,
-      timestamp: new Date().toISOString()
-    };
+    const userMessage = { role: 'user', content: message, timestamp: new Date().toISOString() };
     setAiMessages(prev => [...prev, userMessage]);
     setAiInput('');
     setAiLoading(true);
-
     try {
-      // Build financial context
-      const contextText = `Financial Context:
-- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}
-- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}
-- Balance: ${currencySymbol}${balance.toFixed(2)}
-- Recent transactions: ${transactions.slice(-3).map(t => `${t.type === 'income' ? '+' : '-'}${currencySymbol}${t.amount} (${t.category})`).join(', ')}
-
-User Question: ${message}`;
-
-      // Call Groq API
+      const contextText = `Financial Context:\n- Total Income: ${currencySymbol}${totalIncome.toFixed(2)}\n- Total Expenses: ${currencySymbol}${totalExpense.toFixed(2)}\n- Balance: ${currencySymbol}${balance.toFixed(2)}\n\nUser Question: ${message}`;
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqApiKey}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful financial assistant. Analyze financial data, provide budgeting advice, and help users manage their money wisely. Be concise and practical.'
-            },
-            {
-              role: 'user',
-              content: contextText
-            }
+            { role: 'system', content: 'You are a helpful financial assistant. Be concise and practical.' },
+            { role: 'user', content: contextText }
           ],
           max_tokens: 1000,
           temperature: 0.7
         })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Groq API Error Response:', errorData);
-        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
-      }
-
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
       const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date().toISOString()
-      }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: data.choices[0].message.content, timestamp: new Date().toISOString() }]);
     } catch (error) {
-      console.error('Groq API Error:', error);
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `❌ AI Assistant Error: ${error.message || 'Unknown error occurred'}. Please try again or contact support if the issue persists.`,
-        timestamp: new Date().toISOString(),
-        error: true
-      }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: `❌ Error: ${error.message}`, timestamp: new Date().toISOString(), error: true }]);
     } finally {
       setAiLoading(false);
     }
-  };
-
-  // Contact Form
-  const handleContactSubmit = (e) => {
-    e.preventDefault();
-    alert('Thank you for your message! We will get back to you soon.');
-    setContactForm({ name: '', email: '', subject: '', message: '' });
   };
 
   // Calculations
@@ -729,74 +429,152 @@ User Question: ${message}`;
   const businessProfit = businessRecords.filter(b => b.type === 'profit').reduce((sum, b) => sum + b.netAmount, 0);
   const businessExpense = businessRecords.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.amount, 0);
   const businessBalance = businessProfit - businessExpense;
+  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : 0;
+  const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
 
-  // Styling
-  const bgColor = theme === 'dark' ? 'bg-gradient-to-br from-gray-900 via-black to-gray-900' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100';
+  // Enhanced Styling with Gradients
+  const bgColor = theme === 'dark' 
+    ? 'bg-[#0a0a0f]' 
+    : 'bg-gradient-to-br from-slate-50 via-white to-blue-50';
   const textColor = theme === 'dark' ? 'text-white' : 'text-gray-900';
-  const cardBg = theme === 'dark' ? 'bg-gray-800/50 backdrop-blur-sm' : 'bg-white';
-  const borderColor = theme === 'dark' ? 'border-gray-700' : 'border-gray-200';
-  const inputBg = theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50';
-  const hoverBg = theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100';
+  const textMuted = theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
+  const cardBg = theme === 'dark' 
+    ? 'bg-gradient-to-br from-gray-900/80 via-gray-800/50 to-gray-900/80 backdrop-blur-xl border border-gray-700/50' 
+    : 'bg-white/80 backdrop-blur-xl border border-gray-200/50 shadow-xl shadow-gray-200/20';
+  const borderColor = theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200';
+  const inputBg = theme === 'dark' ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200';
+  const hoverBg = theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100';
+  const glassCard = theme === 'dark'
+    ? 'bg-gradient-to-br from-gray-800/40 to-gray-900/40 backdrop-blur-xl border border-gray-700/30'
+    : 'bg-white/60 backdrop-blur-xl border border-white/50 shadow-lg';
+
 
   // LANDING PAGE
   if (appPage === 'landing') {
     return (
-      <div className={`min-h-screen ${bgColor} ${textColor}`}>
-        <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50 backdrop-blur-lg bg-opacity-90`}>
+      <div className={`min-h-screen ${bgColor} ${textColor} overflow-hidden`}>
+        {/* Animated Background */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 -left-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
+
+        {/* Navigation */}
+        <nav className={`${glassCard} sticky top-0 z-50`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
+            <div className="flex justify-between items-center h-20">
               <div className="flex items-center space-x-3">
-                <span className="text-4xl">💰</span>
-                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
                   FinanceFlow
                 </span>
               </div>
-              <div className="hidden md:flex space-x-8">
-                <button onClick={() => setAppPage('features')} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>
+              <div className="hidden md:flex items-center space-x-2">
+                <button onClick={() => setAppPage('features')} className={`${textColor} ${hoverBg} px-5 py-2.5 rounded-xl transition-all duration-300`}>
                   Features
                 </button>
-                <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} px-4 py-2 rounded-lg transition`}>Contact</button>
-                <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition">
+                <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} px-5 py-2.5 rounded-xl transition-all duration-300`}>
+                  Contact
+                </button>
+                <button 
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className={`${hoverBg} p-2.5 rounded-xl transition-all duration-300`}
+                >
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 font-medium">
                   Get Started
                 </button>
               </div>
-              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden">
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
                 <Menu className="w-6 h-6" />
               </button>
             </div>
           </div>
         </nav>
 
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className={`${cardBg} border-b ${borderColor} md:hidden`}>
-            <div className="px-4 py-3 space-y-2">
-              <button onClick={() => { setMobileMenuOpen(false); setAppPage('features'); }} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>
-                Features
-              </button>
-              <button onClick={() => setAppPage('contact')} className={`${textColor} ${hoverBg} w-full text-left px-4 py-2 rounded-lg`}>Contact</button>
-              <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white w-full px-4 py-2 rounded-lg hover:bg-emerald-600">
-                Get Started
-              </button>
+          <div className={`${glassCard} md:hidden mx-4 mt-2 rounded-2xl`}>
+            <div className="px-4 py-4 space-y-2">
+              <button onClick={() => { setMobileMenuOpen(false); setAppPage('features'); }} className={`${textColor} ${hoverBg} w-full text-left px-4 py-3 rounded-xl`}>Features</button>
+              <button onClick={() => { setMobileMenuOpen(false); setAppPage('contact'); }} className={`${textColor} ${hoverBg} w-full text-left px-4 py-3 rounded-xl`}>Contact</button>
+              <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white w-full px-4 py-3 rounded-xl font-medium">Get Started</button>
             </div>
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-16">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-              Master Your Finances
+        {/* Hero Section */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
+          <div className="text-center">
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 px-4 py-2 rounded-full mb-8">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span className={`text-sm font-medium ${textMuted}`}>AI-Powered Financial Management</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 leading-tight">
+              <span className="bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">Master Your</span>
+              <br />
+              <span className="bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">Financial Future</span>
             </h1>
-            <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-8 max-w-3xl mx-auto`}>
-              Track income, expenses, investments, and business finances all in one intelligent platform
+            
+            <p className={`text-xl md:text-2xl ${textMuted} mb-12 max-w-3xl mx-auto leading-relaxed`}>
+              Track income, expenses, and investments with AI-powered insights. 
+              Beautiful charts, smart budgeting, and real-time sync across all devices.
             </p>
+            
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl transition transform hover:scale-105">
-                Start Free Today <ArrowRight className="inline ml-2" />
+              <button 
+                onClick={() => setAppPage('auth')} 
+                className="group bg-gradient-to-r from-emerald-500 via-emerald-400 to-blue-500 text-white px-8 py-4 rounded-2xl text-lg font-semibold hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2"
+              >
+                <span>Start Free Today</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button onClick={() => setAppPage('features')} className={`${cardBg} border-2 ${borderColor} px-8 py-4 rounded-xl text-lg font-semibold hover:border-emerald-500 transition`}>
-                View Features
+              <button 
+                onClick={() => setAppPage('features')} 
+                className={`${glassCard} px-8 py-4 rounded-2xl text-lg font-semibold hover:border-emerald-500/50 transition-all duration-300 flex items-center justify-center space-x-2`}
+              >
+                <span>View Features</span>
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
+          </div>
+
+          {/* Stats Section */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20">
+            {[
+              { value: '10K+', label: 'Active Users', icon: TrendingUp },
+              { value: '99.9%', label: 'Uptime', icon: Shield },
+              { value: '256-bit', label: 'Encryption', icon: Zap },
+              { value: '24/7', label: 'AI Support', icon: Sparkles }
+            ].map((stat, i) => (
+              <div key={i} className={`${glassCard} p-6 rounded-2xl text-center group hover:border-emerald-500/30 transition-all duration-300`}>
+                <stat.icon className="w-8 h-8 text-emerald-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                <p className={`text-3xl font-bold ${textColor} mb-1`}>{stat.value}</p>
+                <p className={textMuted}>{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Feature Preview Cards */}
+          <div className="grid md:grid-cols-3 gap-6 mt-20">
+            {[
+              { icon: Wallet, title: 'Smart Budgeting', desc: 'Set budgets and get real-time alerts when you\'re close to limits', gradient: 'from-emerald-500 to-green-600' },
+              { icon: PiggyBank, title: 'Track Savings', desc: 'Watch your savings grow with beautiful visualizations', gradient: 'from-blue-500 to-cyan-600' },
+              { icon: Target, title: 'Investment Goals', desc: 'Calculate returns with inflation-adjusted projections', gradient: 'from-purple-500 to-pink-600' }
+            ].map((feature, i) => (
+              <div key={i} className={`${glassCard} p-8 rounded-3xl group hover:border-emerald-500/30 transition-all duration-500 hover:-translate-y-2`}>
+                <div className={`w-14 h-14 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon className="w-7 h-7 text-white" />
+                </div>
+                <h3 className={`text-xl font-bold ${textColor} mb-3`}>{feature.title}</h3>
+                <p className={textMuted}>{feature.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -807,96 +585,59 @@ User Question: ${message}`;
   if (appPage === 'features') {
     return (
       <div className={`min-h-screen ${bgColor} ${textColor}`}>
-        <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50`}>
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <nav className={`${glassCard} sticky top-0 z-50`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
+            <div className="flex justify-between items-center h-20">
               <button onClick={() => setAppPage('landing')} className="flex items-center space-x-3">
-                <span className="text-4xl">💰</span>
-                <span className="text-2xl font-bold">FinanceFlow</span>
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">FinanceFlow</span>
               </button>
-              <div className="flex items-center gap-4">
-                <button onClick={() => setAppPage('landing')} className={`${hoverBg} px-4 py-2 rounded-lg`}>Home</button>
-                <button onClick={() => setAppPage('contact')} className={`${hoverBg} px-4 py-2 rounded-lg`}>Contact</button>
-                <button onClick={() => setAppPage('auth')} className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition">
-                  Get Started
-                </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setAppPage('landing')} className={`${hoverBg} px-4 py-2 rounded-xl`}>Home</button>
+                <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white px-6 py-2.5 rounded-xl font-medium">Get Started</button>
               </div>
             </div>
           </div>
         </nav>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center mb-16">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
               Powerful Features
             </h1>
-            <p className={`text-xl md:text-2xl ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} max-w-3xl mx-auto`}>
-              Everything you need to take control of your finances
+            <p className={`text-xl ${textMuted} max-w-2xl mx-auto`}>
+              Everything you need to take complete control of your financial life
             </p>
           </div>
 
-          {/* Core Features */}
-          <div className="grid md:grid-cols-3 gap-8 mb-20">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { 
-                icon: Shield, 
-                title: 'Bank-Level Security', 
-                desc: 'Your financial data is encrypted with AES-256 encryption and stored securely in Firebase Cloud. Multi-device sync keeps all your data safe and accessible.' 
-              },
-              { 
-                icon: TrendingUp, 
-                title: 'Smart Analytics & Charts', 
-                desc: 'Beautiful visualizations show your spending patterns. Track income vs expenses with pie charts, see top categories, and make data-driven financial decisions.' 
-              },
-              { 
-                icon: Zap, 
-                title: 'Real-Time Multi-Device Sync', 
-                desc: 'Access your finances from phone, tablet, or computer. Changes sync instantly across all devices via secure Firebase Cloud Database.' 
-              }
-            ].map((feature, i) => (
-              <div key={i} className={`${cardBg} border ${borderColor} p-8 rounded-2xl hover:shadow-xl transition transform hover:scale-105`}>
-                <feature.icon className="w-12 h-12 text-emerald-500 mb-4" />
-                <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{feature.desc}</p>
+              { icon: Shield, title: 'Bank-Level Security', desc: 'AES-256 encryption keeps your data safe. Secure Firebase Cloud storage with multi-device sync.' },
+              { icon: TrendingUp, title: 'Smart Analytics', desc: 'Beautiful charts show spending patterns. Track income vs expenses with interactive visualizations.' },
+              { icon: Zap, title: 'Real-Time Sync', desc: 'Access finances from any device. Changes sync instantly across phone, tablet, and computer.' },
+              { icon: Sparkles, title: 'AI Assistant', desc: 'Get personalized financial advice. Upload receipts for automatic transaction extraction.' },
+              { icon: Wallet, title: 'Budget Tracking', desc: 'Set category budgets with real-time progress bars. Get alerts before overspending.' },
+              { icon: Briefcase, title: 'Investment Calculator', desc: 'Calculate returns with inflation adjustment. Track SIPs, stocks, crypto, and more.' }
+            ].map((f, i) => (
+              <div key={i} className={`${glassCard} p-8 rounded-3xl hover:border-emerald-500/30 transition-all duration-300 group`}>
+                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <f.icon className="w-7 h-7 text-emerald-400" />
+                </div>
+                <h3 className={`text-xl font-bold ${textColor} mb-3`}>{f.title}</h3>
+                <p className={textMuted}>{f.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* Additional Features */}
-          <div className="grid md:grid-cols-2 gap-8 mb-20">
-            {[
-              {
-                icon: TrendingUp,
-                title: 'Income Tracking',
-                desc: 'Track all income sources with custom categories. Monitor salary, business revenue, freelance work, and more.'
-              },
-              {
-                icon: TrendingDown,
-                title: 'Expense Management',
-                desc: 'Organize expenses by category. Upload receipt photos and let AI extract transaction details automatically.'
-              },
-              {
-                icon: Briefcase,
-                title: 'Investment Calculator',
-                desc: 'Calculate returns with inflation adjustment. Track SIPs, lump sums, stocks, and crypto investments.'
-              },
-              {
-                icon: Wallet,
-                title: 'Multi-Currency Support',
-                desc: 'Support for USD, EUR, GBP, INR, JPY, CNY, CAD, and AUD. Convert all data when switching currencies.'
-              }
-            ].map((feature, i) => (
-              <div key={i} className={`${cardBg} border ${borderColor} p-8 rounded-2xl hover:shadow-xl transition`}>
-                <feature.icon className="w-10 h-10 text-emerald-500 mb-4" />
-                <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
-                <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <div className="text-center">
-            <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white px-10 py-4 rounded-xl text-lg font-semibold hover:shadow-2xl transition transform hover:scale-105">
+          <div className="text-center mt-16">
+            <button onClick={() => setAppPage('auth')} className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white px-10 py-4 rounded-2xl text-lg font-semibold hover:shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 transform hover:scale-105">
               Start Using FinanceFlow <ArrowRight className="inline ml-2" />
             </button>
           </div>
@@ -909,44 +650,43 @@ User Question: ${message}`;
   if (appPage === 'contact') {
     return (
       <div className={`min-h-screen ${bgColor} ${textColor}`}>
-        <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50`}>
+        <nav className={`${glassCard} sticky top-0 z-50`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
+            <div className="flex justify-between items-center h-20">
               <button onClick={() => setAppPage('landing')} className="flex items-center space-x-3">
-                <span className="text-4xl">💰</span>
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center">
+                  <DollarSign className="w-7 h-7 text-white" />
+                </div>
                 <span className="text-2xl font-bold">FinanceFlow</span>
               </button>
-              <button onClick={() => setAppPage('landing')} className={`${hoverBg} px-4 py-2 rounded-lg`}>
-                Back
-              </button>
+              <button onClick={() => setAppPage('landing')} className={`${hoverBg} px-4 py-2 rounded-xl`}>Back</button>
             </div>
           </div>
         </nav>
 
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <h1 className="text-4xl font-bold mb-4 text-center">Get In Touch</h1>
-          <p className={`text-center mb-12 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Have questions? We'd love to hear from you.
-          </p>
+        <div className="max-w-4xl mx-auto px-4 py-20">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">Get In Touch</h1>
+            <p className={textMuted}>Have questions? We'd love to hear from you.</p>
+          </div>
 
-          <div className="max-w-xl mx-auto">
-            <div className="space-y-6">
-              <div className={`${cardBg} border ${borderColor} p-6 rounded-2xl flex items-start space-x-4`}>
-                <Mail className="w-6 h-6 text-emerald-500 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Email</h3>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryanssareen@gmail.com</p>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryanssareen@outlook.com</p>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>ryansareen6@gmail.com</p>
-                </div>
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <div className={`${glassCard} p-6 rounded-2xl flex items-start space-x-4`}>
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 rounded-xl flex items-center justify-center">
+                <Mail className="w-6 h-6 text-emerald-400" />
               </div>
-
-              <div className={`${cardBg} border ${borderColor} p-6 rounded-2xl flex items-start space-x-4`}>
-                <Phone className="w-6 h-6 text-emerald-500 mt-1" />
-                <div>
-                  <h3 className="font-semibold mb-1">Phone</h3>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>+91 7428769797</p>
-                </div>
+              <div>
+                <h3 className="font-semibold mb-2">Email</h3>
+                <p className={`${textMuted} text-sm`}>ryanssareen@gmail.com</p>
+              </div>
+            </div>
+            <div className={`${glassCard} p-6 rounded-2xl flex items-start space-x-4`}>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl flex items-center justify-center">
+                <Phone className="w-6 h-6 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Phone</h3>
+                <p className={`${textMuted} text-sm`}>+91 7428769797</p>
               </div>
             </div>
           </div>
@@ -955,164 +695,108 @@ User Question: ${message}`;
     );
   }
 
+
   // AUTH PAGE
   if (appPage === 'auth') {
     return (
       <div className={`min-h-screen ${bgColor} ${textColor} flex items-center justify-center p-4`}>
-        {!showForgotPassword ? (
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-8 w-full max-w-md`}>
-            <div className="text-center mb-8">
-              <DollarSign className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold mb-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
-              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                {isLogin ? 'Sign in to continue' : 'Start managing your finances today'}
-              </p>
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className={`relative ${glassCard} rounded-3xl p-8 w-full max-w-md`}>
+          <button onClick={() => setAppPage('landing')} className={`absolute top-4 left-4 ${hoverBg} p-2 rounded-xl`}>
+            <ArrowRight className="w-5 h-5 rotate-180" />
+          </button>
+
+          <div className="text-center mb-8 mt-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/25">
+              <DollarSign className="w-10 h-10 text-white" />
             </div>
+            <h1 className="text-3xl font-bold mb-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
+            <p className={textMuted}>{isLogin ? 'Sign in to continue' : 'Start your financial journey'}</p>
+          </div>
 
-            {authError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-sm">
-                {authError}
-              </div>
-            )}
+          {authError && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center space-x-2">
+              <X className="w-5 h-5 flex-shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
 
-            <div className="space-y-4">
+          {!showForgotPassword ? (
+            <div className="space-y-5">
               {!isLogin && (
                 <div>
-                  <label className="block mb-2 font-medium">Username</label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder="Choose a username"
-                    disabled={authLoading}
-                  />
+                  <label className={`block mb-2 font-medium text-sm ${textMuted}`}>Username</label>
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                    className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all`}
+                    placeholder="Choose a username" disabled={authLoading} />
                 </div>
               )}
 
               <div>
-                <label className="block mb-2 font-medium">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="Enter your email"
-                  disabled={authLoading}
-                />
+                <label className={`block mb-2 font-medium text-sm ${textMuted}`}>Email</label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all`}
+                  placeholder="Enter your email" disabled={authLoading} />
               </div>
 
               <div>
-                <label className="block mb-2 font-medium">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="Enter your password"
-                  disabled={authLoading}
-                />
+                <label className={`block mb-2 font-medium text-sm ${textMuted}`}>Password</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all`}
+                  placeholder="Enter your password" disabled={authLoading} />
               </div>
 
               {!isLogin && (
                 <div>
-                  <label className="block mb-2 font-medium">Currency</label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    disabled={authLoading}
-                  >
-                    {currencies.map(curr => (
-                      <option key={curr.code} value={curr.code}>
-                        {curr.symbol} {curr.name}
-                      </option>
-                    ))}
+                  <label className={`block mb-2 font-medium text-sm ${textMuted}`}>Currency</label>
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)}
+                    className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`} disabled={authLoading}>
+                    {currencies.map(curr => <option key={curr.code} value={curr.code}>{curr.symbol} {curr.name}</option>)}
                   </select>
                 </div>
               )}
 
               {isLogin && (
-                <div className="flex items-center justify-end">
-                  <button 
-                    onClick={() => setShowForgotPassword(true)} 
-                    className="text-sm text-emerald-500 hover:text-emerald-600"
-                    disabled={authLoading}
-                  >
+                <div className="flex justify-end">
+                  <button onClick={() => setShowForgotPassword(true)} className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
                     Forgot Password?
                   </button>
                 </div>
               )}
 
-              <button
-                onClick={handleAuth}
-                disabled={authLoading}
-                className={`w-full bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition font-semibold ${authLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
+              <button onClick={handleAuth} disabled={authLoading}
+                className={`w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 ${authLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02]'}`}>
                 {authLoading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
               </button>
 
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setAuthError('');
-                }}
-                disabled={authLoading}
-                className={`w-full ${hoverBg} py-3 rounded-lg transition`}
-              >
+              <button onClick={() => { setIsLogin(!isLogin); setAuthError(''); }} disabled={authLoading}
+                className={`w-full ${hoverBg} py-3 rounded-xl transition-all ${textMuted}`}>
                 {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
               </button>
-
-              <button
-                onClick={() => setAppPage('landing')}
-                disabled={authLoading}
-                className={`w-full ${hoverBg} py-3 rounded-lg transition`}
-              >
-                Back to Home
-              </button>
             </div>
-          </div>
-        ) : (
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-8 w-full max-w-md`}>
-            <div className="text-center mb-8">
-              <Mail className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold mb-2">Reset Password</h1>
-              <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                Enter your email and we'll send you a reset link
-              </p>
-            </div>
-
-            <div className="space-y-4">
+          ) : (
+            <div className="space-y-5">
               <div>
-                <label className="block mb-2 font-medium">Email</label>
-                <input
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="Enter your email"
-                />
+                <label className={`block mb-2 font-medium text-sm ${textMuted}`}>Email</label>
+                <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}
+                  placeholder="Enter your email" />
               </div>
-
-              <button
-                onClick={handlePasswordReset}
-                className="w-full bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition font-semibold"
-              >
+              <button onClick={handlePasswordReset}
+                className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white py-4 rounded-xl font-semibold hover:shadow-lg transition-all">
                 Send Reset Email
               </button>
-
-              <button
-                onClick={() => {
-                  setShowForgotPassword(false);
-                  setResetEmail('');
-                }}
-                className={`w-full ${hoverBg} py-3 rounded-lg transition`}
-              >
+              <button onClick={() => { setShowForgotPassword(false); setResetEmail(''); }}
+                className={`w-full ${hoverBg} py-3 rounded-xl transition-all ${textMuted}`}>
                 Back to Sign In
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }
@@ -1121,29 +805,27 @@ User Question: ${message}`;
   return (
     <div className={`min-h-screen ${bgColor}`}>
       {/* Top Navigation */}
-      <nav className={`${cardBg} border-b ${borderColor} sticky top-0 z-50`}>
+      <nav className={`${glassCard} sticky top-0 z-50 border-t-0 border-x-0`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <span className="text-4xl">💰</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
               <span className={`text-xl font-bold ${textColor}`}>FinanceFlow</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className={`hidden sm:block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                Welcome, {userData?.username || currentUser?.displayName}
+            <div className="flex items-center space-x-3">
+              <span className={`hidden sm:block ${textMuted} text-sm`}>
+                Hi, {userData?.username || currentUser?.displayName}
               </span>
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`${hoverBg} p-2 rounded-lg transition`}
-              >
+              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className={`${hoverBg} p-2.5 rounded-xl transition-all ${textColor}`}>
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <button
-                onClick={handleLogout}
-                className="bg-red-500/10 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500/20 transition flex items-center space-x-2"
-              >
+              <button onClick={handleLogout}
+                className="bg-red-500/10 text-red-400 px-4 py-2 rounded-xl hover:bg-red-500/20 transition-all flex items-center space-x-2">
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden sm:inline text-sm font-medium">Logout</span>
               </button>
             </div>
           </div>
@@ -1151,42 +833,33 @@ User Question: ${message}`;
       </nav>
 
       {/* Main Navigation Tabs */}
-      <div className={`${cardBg} border-b ${borderColor}`}>
+      <div className={`${glassCard} border-t-0 border-x-0`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <div className="flex space-x-1 overflow-x-auto">
+            <div className="flex space-x-1 overflow-x-auto scrollbar-hide py-1">
               {[
-                { id: 'settings', label: 'Settings', icon: Settings },
-                { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
+                { id: 'dashboard', label: 'Dashboard', icon: Home },
                 { id: 'income', label: 'Income', icon: TrendingUp },
-                { id: 'expense', label: 'Expense', icon: TrendingDown },
-                { id: 'investments', label: 'Investments', icon: Briefcase }
-              ].map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setCurrentPage(tab.id)}
-                    className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition ${
-                      currentPage === tab.id
-                        ? 'border-emerald-500 text-emerald-500'
-                        : `border-transparent ${textColor} ${hoverBg}`
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="whitespace-nowrap">{tab.label}</span>
-                  </button>
-                );
-              })}
+                { id: 'expense', label: 'Expenses', icon: CreditCard },
+                { id: 'investments', label: 'Investments', icon: Briefcase },
+                { id: 'settings', label: 'Settings', icon: Settings }
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setCurrentPage(tab.id)}
+                  className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    currentPage === tab.id
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-blue-500/20 text-emerald-400 border border-emerald-500/30'
+                      : `${textMuted} ${hoverBg}`
+                  }`}>
+                  <tab.icon className="w-5 h-5" />
+                  <span className="whitespace-nowrap font-medium text-sm">{tab.label}</span>
+                </button>
+              ))}
             </div>
             
-            {/* AI Assistant Button */}
-            <button
-              onClick={() => setShowAIChat(!showAIChat)}
-              className="ml-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition flex items-center space-x-2 shadow-lg"
-            >
-              <span className="text-xl">🤖</span>
-              <span className="font-semibold whitespace-nowrap">AI Assistant</span>
+            <button onClick={() => setShowAIChat(!showAIChat)}
+              className="ml-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center space-x-2">
+              <Sparkles className="w-5 h-5" />
+              <span className="font-medium text-sm whitespace-nowrap">AI Assistant</span>
             </button>
           </div>
         </div>
@@ -1197,247 +870,222 @@ User Question: ${message}`;
 
         {/* DASHBOARD PAGE */}
         {currentPage === 'dashboard' && (
-          <div className="space-y-6">
-            <h1 className={`text-3xl font-bold ${textColor}`}>Financial Dashboard</h1>
-            
-            {/* Summary Cards */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Total Income</h3>
-                  <TrendingUp className="w-6 h-6 text-green-500" />
-                </div>
-                <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
-                <p className="text-sm text-green-500 mt-2">{incomeTransactions.length} transactions</p>
+          <div className="space-y-8">
+            {/* Welcome Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className={`text-3xl font-bold ${textColor}`}>
+                  Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {userData?.username || 'there'}! 👋
+                </h1>
+                <p className={`${textMuted} mt-1`}>Here's your financial overview</p>
               </div>
-              
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Total Expenses</h3>
-                  <TrendingDown className="w-6 h-6 text-red-500" />
-                </div>
-                <p className={`text-3xl font-bold ${textColor}`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
-                <p className="text-sm text-red-500 mt-2">{expenseTransactions.length} transactions</p>
-              </div>
-              
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Net Balance</h3>
-                  <DollarSign className={`w-6 h-6 ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                </div>
-                <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {currencySymbol}{balance.toFixed(2)}
-                </p>
+              <div className="flex items-center space-x-3 mt-4 md:mt-0">
+                <button onClick={() => setCurrentPage('income')} className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
+                  <span>Add Income</span>
+                </button>
+                <button onClick={() => setCurrentPage('expense')} className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-red-500/25 transition-all flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
+                  <span>Add Expense</span>
+                </button>
               </div>
             </div>
-        {/* Charts Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Investment Return Chart - LINE CHART */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Return Analysis</h3>
-            {investments.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={investments.map(inv => ({
-                  name: inv.label,
-                  invested: inv.amount,
-                  returns: parseFloat(inv.nominalReturn)
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis dataKey="name" stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="invested" stroke="#8b5cf6" strokeWidth={2} name="Invested Amount" />
-                  <Line type="monotone" dataKey="returns" stroke="#10b981" strokeWidth={2} name="Expected Returns" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No investments yet
-              </p>
-            )}
-          </div>
+            
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              <div className={`${glassCard} rounded-2xl p-6 group hover:border-emerald-500/30 transition-all duration-300`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingUp className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">+{incomeTransactions.length}</span>
+                </div>
+                <p className={`text-sm ${textMuted} mb-1`}>Total Income</p>
+                <p className={`text-2xl md:text-3xl font-bold text-emerald-400`}>{currencySymbol}{totalIncome.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              </div>
+              
+              <div className={`${glassCard} rounded-2xl p-6 group hover:border-red-500/30 transition-all duration-300`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingDown className="w-6 h-6 text-red-400" />
+                  </div>
+                  <span className="text-xs font-medium text-red-400 bg-red-500/10 px-2 py-1 rounded-lg">-{expenseTransactions.length}</span>
+                </div>
+                <p className={`text-sm ${textMuted} mb-1`}>Total Expenses</p>
+                <p className={`text-2xl md:text-3xl font-bold text-red-400`}>{currencySymbol}{totalExpense.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              </div>
+              
+              <div className={`${glassCard} rounded-2xl p-6 group hover:border-blue-500/30 transition-all duration-300`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Wallet className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-lg ${balance >= 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                    {savingsRate}%
+                  </span>
+                </div>
+                <p className={`text-sm ${textMuted} mb-1`}>Net Balance</p>
+                <p className={`text-2xl md:text-3xl font-bold ${balance >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                  {currencySymbol}{balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </p>
+              </div>
 
-          {/* Investment Type Breakdown - PIE CHART */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Investment Type Breakdown</h3>
-            {investments.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={Object.entries(
-                      investments.reduce((acc, inv) => {
-                        acc[inv.type] = (acc[inv.type] || 0) + inv.amount;
-                        return acc;
-                      }, {})
-                    ).map(([type, amount]) => ({
-                      name: type.charAt(0).toUpperCase() + type.slice(1),
-                      value: amount
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    dataKey="value"
-                    stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
-                    strokeWidth={2}
-                  >
-                    {Object.keys(investments.reduce((acc, inv) => { acc[inv.type] = 1; return acc; }, {})).map((type, index) => {
-                      const colors = { crypto: '#f59e0b', stocks: '#3b82f6', bonds: '#10b981', sip: '#8b5cf6', 'real estate': '#ec4899', fd: '#06b6d4', other: '#6b7280' };
-                      return <Cell key={`cell-${index}`} fill={colors[type] || '#6b7280'} />;
-                    })}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No investments yet
-              </p>
-            )}
-          </div>
+              <div className={`${glassCard} rounded-2xl p-6 group hover:border-purple-500/30 transition-all duration-300`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg">{investments.length}</span>
+                </div>
+                <p className={`text-sm ${textMuted} mb-1`}>Invested</p>
+                <p className={`text-2xl md:text-3xl font-bold text-purple-400`}>{currencySymbol}{totalInvested.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              </div>
+            </div>
 
-          {/* Budget Allocation Circle - RGB CODED DONUT */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Allocation (RGB)</h3>
-            {totalIncome > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { 
-                        name: 'Needs (Blue)', 
-                        value: expenseTransactions
-                          .filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category))
-                          .reduce((sum, t) => sum + t.amount, 0),
-                        fill: '#3b82f6'
-                      },
-                      { 
-                        name: 'Wants (Red)', 
-                        value: expenseTransactions
-                          .filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category))
-                          .reduce((sum, t) => sum + t.amount, 0),
-                        fill: '#ef4444'
-                      },
-                      { 
-                        name: 'Savings (Green)', 
-                        value: Math.max(0, totalIncome - totalExpense),
-                        fill: '#10b981'
+
+            {/* Charts Section */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Income vs Expenses Area Chart */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold mb-6 ${textColor}`}>Income vs Expenses Trend</h3>
+                {transactions.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <AreaChart data={(() => {
+                      const last6Months = [];
+                      for (let i = 5; i >= 0; i--) {
+                        const d = new Date();
+                        d.setMonth(d.getMonth() - i);
+                        const month = d.toLocaleString('default', { month: 'short' });
+                        const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                        const income = transactions.filter(t => t.type === 'income' && t.date?.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0);
+                        const expense = transactions.filter(t => t.type === 'expense' && t.date?.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0);
+                        last6Months.push({ month, income, expense });
                       }
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={({ name, percent, value }) => `${name}: ${currencySymbol}${value.toFixed(0)} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={110}
-                    innerRadius={70}
-                    dataKey="value"
-                    stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
-                    strokeWidth={3}
-                  >
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#ef4444" />
-                    <Cell fill="#10b981" />
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No income data yet. Add income to see budget allocation.
-              </p>
-            )}
-          </div>
+                      return last6Months;
+                    })()}>
+                      <defs>
+                        <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
+                      <XAxis dataKey="month" stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} fontSize={12} />
+                      <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} fontSize={12} tickFormatter={(v) => `${currencySymbol}${v}`} />
+                      <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#fff', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }} />
+                      <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fill="url(#incomeGradient)" name="Income" />
+                      <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fill="url(#expenseGradient)" name="Expense" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={`flex flex-col items-center justify-center h-64 ${textMuted}`}>
+                    <TrendingUp className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No transaction data yet</p>
+                  </div>
+                )}
+              </div>
 
-          {/* Expenditure Breakdown - BAR CHART */}
-          <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-            <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Expenditure Breakdown</h3>
-            {expenseTransactions.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={[
-                    { category: 'Food', amount: expenseTransactions.filter(t => t.category === 'Food').reduce((sum, t) => sum + t.amount, 0), fill: '#10b981' },
-                    { category: 'Beverage', amount: expenseTransactions.filter(t => t.category === 'Entertainment').reduce((sum, t) => sum + t.amount, 0), fill: '#f59e0b' },
-                    { category: 'Utilities', amount: expenseTransactions.filter(t => t.category === 'Utilities').reduce((sum, t) => sum + t.amount, 0), fill: '#3b82f6' },
-                    { category: 'Entertainment', amount: expenseTransactions.filter(t => ['Shopping', 'Other'].includes(t.category)).reduce((sum, t) => sum + t.amount, 0), fill: '#ec4899' }
-                  ]}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                  <XAxis dataKey="category" stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'} />
-                  <Tooltip 
-                    formatter={(value) => `${currencySymbol}${value.toFixed(2)}`}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                    <Cell fill="#10b981" />
-                    <Cell fill="#f59e0b" />
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#ec4899" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className={`text-center py-20 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                No expenses yet
-              </p>
-            )}
-          </div>
-        </div>
+              {/* Expense Categories Pie Chart */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold mb-6 ${textColor}`}>Spending by Category</h3>
+                {expenseTransactions.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(expenseTransactions.reduce((acc, t) => { acc[t.category] = (acc[t.category] || 0) + t.amount; return acc; }, {}))
+                          .map(([name, value]) => ({ name, value }))
+                          .sort((a, b) => b.value - a.value)
+                          .slice(0, 6)}
+                        cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value"
+                        stroke={theme === 'dark' ? '#1f2937' : '#ffffff'} strokeWidth={2}>
+                        {['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((c, i) => <Cell key={i} fill={c} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#fff', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className={`flex flex-col items-center justify-center h-64 ${textMuted}`}>
+                    <PieChart className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No expense data yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-        
+            {/* Budget Overview & Recent Transactions */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Quick Budget Overview */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className={`text-lg font-bold ${textColor}`}>Budget Overview</h3>
+                  <button onClick={() => { setCurrentPage('expense'); }} className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+                    Manage →
+                  </button>
+                </div>
+                {totalIncome > 0 ? (
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Needs', value: expenseTransactions.filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category)).reduce((s, t) => s + t.amount, 0), color: 'blue', max: totalIncome * 0.5 },
+                      { label: 'Wants', value: expenseTransactions.filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category)).reduce((s, t) => s + t.amount, 0), color: 'pink', max: totalIncome * 0.3 },
+                      { label: 'Savings', value: Math.max(0, balance), color: 'emerald', max: totalIncome * 0.2 }
+                    ].map((item, i) => (
+                      <div key={i}>
+                        <div className="flex justify-between mb-2">
+                          <span className={`text-sm font-medium ${textColor}`}>{item.label}</span>
+                          <span className={`text-sm font-semibold text-${item.color}-400`}>{currencySymbol}{item.value.toFixed(2)}</span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                          <div className={`h-2 rounded-full bg-gradient-to-r ${item.color === 'blue' ? 'from-blue-500 to-cyan-500' : item.color === 'pink' ? 'from-pink-500 to-rose-500' : 'from-emerald-500 to-green-500'} transition-all duration-500`}
+                            style={{ width: `${Math.min((item.value / item.max) * 100, 100)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`flex flex-col items-center justify-center py-8 ${textMuted}`}>
+                    <Target className="w-12 h-12 mb-3 opacity-30" />
+                    <p>Add income to see budget breakdown</p>
+                  </div>
+                )}
+              </div>
 
-            {/* Recent Transactions */}
-            <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-              <h2 className={`text-xl font-bold mb-4 ${textColor}`}>Recent Transactions</h2>
-              {transactions.length === 0 ? (
-                <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>No transactions yet</p>
-              ) : (
-                <div className="space-y-3">
-                  {transactions.slice(-5).reverse().map(t => (
-                    <div key={t.id} className={`flex justify-between items-center p-3 ${inputBg} rounded-lg`}>
-                      <div>
-                        <p className={`font-semibold ${textColor}`}>{t.label}</p>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {t.category} • {t.date}
+              {/* Recent Transactions */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className={`text-lg font-bold ${textColor}`}>Recent Transactions</h3>
+                  <span className={`text-sm ${textMuted}`}>{transactions.length} total</span>
+                </div>
+                {transactions.length === 0 ? (
+                  <div className={`flex flex-col items-center justify-center py-8 ${textMuted}`}>
+                    <CreditCard className="w-12 h-12 mb-3 opacity-30" />
+                    <p>No transactions yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.slice(-5).reverse().map(t => (
+                      <div key={t.id} className={`flex items-center justify-between p-3 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} hover:scale-[1.02] transition-transform cursor-pointer`}>
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                            {t.type === 'income' ? <TrendingUp className="w-5 h-5 text-emerald-400" /> : <TrendingDown className="w-5 h-5 text-red-400" />}
+                          </div>
+                          <div>
+                            <p className={`font-medium text-sm ${textColor}`}>{t.label}</p>
+                            <p className={`text-xs ${textMuted}`}>{t.category} • {t.date}</p>
+                          </div>
+                        </div>
+                        <p className={`font-bold ${t.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
                         </p>
                       </div>
-                      <p className={`font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                        {t.type === 'income' ? '+' : '-'}{currencySymbol}{t.amount.toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1445,80 +1093,62 @@ User Question: ${message}`;
         {/* INCOME PAGE */}
         {currentPage === 'income' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className={`text-3xl font-bold ${textColor}`}>Income</h1>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-                  Total: {currencySymbol}{totalIncome.toFixed(2)}
-                </p>
+                <p className={`${textMuted} mt-1`}>Total: <span className="text-emerald-400 font-semibold">{currencySymbol}{totalIncome.toFixed(2)}</span></p>
               </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => openCategoryModal('income')}
-                  className="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>Manage Categories</span>
+              <div className="flex flex-wrap gap-3">
+                <button onClick={() => openCategoryModal('income')}
+                  className={`${glassCard} px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all flex items-center space-x-2 text-sm font-medium ${textColor}`}>
+                  <Settings className="w-4 h-4" />
+                  <span>Categories</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setTransactionForm({ 
-                      ...transactionForm, 
-                      type: 'income', 
-                      category: incomeCategories[0] 
-                    });
-                    setShowTransactionForm(true);
-                  }}
-                  className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
-                >
-                  <Plus className="w-5 h-5" />
+                <button onClick={() => { setTransactionForm({ ...transactionForm, type: 'income', category: incomeCategories[0] }); setShowTransactionForm(true); }}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
                   <span>Add Income</span>
                 </button>
               </div>
             </div>
 
             {incomeTransactions.length === 0 ? (
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-12 text-center`}>
-                <TrendingUp className={`w-16 h-16 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
-                <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>No income recorded yet</p>
-                <button
-                  onClick={() => {
-                    setTransactionForm({ ...transactionForm, type: 'income' });
-                    setShowTransactionForm(true);
-                  }}
-                  className="mt-4 bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition"
-                >
+              <div className={`${glassCard} rounded-2xl p-12 text-center`}>
+                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <TrendingUp className="w-10 h-10 text-emerald-400" />
+                </div>
+                <h3 className={`text-xl font-bold ${textColor} mb-2`}>No Income Yet</h3>
+                <p className={`${textMuted} mb-6`}>Start tracking your earnings</p>
+                <button onClick={() => { setTransactionForm({ ...transactionForm, type: 'income' }); setShowTransactionForm(true); }}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-medium">
                   Add Your First Income
                 </button>
               </div>
             ) : (
-              <div className={`${cardBg} border ${borderColor} rounded-2xl overflow-hidden`}>
+              <div className={`${glassCard} rounded-2xl overflow-hidden`}>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className={inputBg}>
+                    <thead className={theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}>
                       <tr>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Date</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Description</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Category</th>
-                        <th className={`px-6 py-4 text-right ${textColor}`}>Amount</th>
-                        <th className={`px-6 py-4 text-center ${textColor}`}>Actions</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Date</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Description</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Category</th>
+                        <th className={`px-6 py-4 text-right text-sm font-semibold ${textColor}`}>Amount</th>
+                        <th className={`px-6 py-4 text-center text-sm font-semibold ${textColor}`}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {incomeTransactions.map(t => (
-                        <tr key={t.id} className={`border-t ${borderColor}`}>
-                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.date}</td>
-                          <td className={`px-6 py-4 ${textColor}`}>{t.label}</td>
-                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.category}</td>
-                          <td className="px-6 py-4 text-right font-bold text-green-500">
-                            +{currencySymbol}{t.amount.toFixed(2)}
+                      {incomeTransactions.map((t, i) => (
+                        <tr key={t.id} className={`border-t ${borderColor} ${hoverBg} transition-colors`}>
+                          <td className={`px-6 py-4 text-sm ${textMuted}`}>{t.date}</td>
+                          <td className={`px-6 py-4 text-sm font-medium ${textColor}`}>{t.label}</td>
+                          <td className={`px-6 py-4 text-sm`}>
+                            <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-lg text-xs font-medium">{t.category}</span>
                           </td>
+                          <td className="px-6 py-4 text-right font-bold text-emerald-400">+{currencySymbol}{t.amount.toFixed(2)}</td>
                           <td className="px-6 py-4 text-center">
-                            <button
-                              onClick={() => deleteTransaction(t.id)}
-                              className="text-red-500 hover:text-red-600"
-                            >
-                              <X className="w-5 h-5" />
+                            <button onClick={() => deleteTransaction(t.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-lg transition-all">
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
                         </tr>
@@ -1531,130 +1161,66 @@ User Question: ${message}`;
           </div>
         )}
 
+
         {/* EXPENSE PAGE */}
         {currentPage === 'expense' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className={`text-3xl font-bold ${textColor}`}>Expenses</h1>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-                  Total: {currencySymbol}{totalExpense.toFixed(2)}
-                </p>
+                <p className={`${textMuted} mt-1`}>Total: <span className="text-red-400 font-semibold">{currencySymbol}{totalExpense.toFixed(2)}</span></p>
               </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowBudgetModal(true)}
-                  className="bg-purple-500 text-white px-4 py-3 rounded-lg hover:bg-purple-600 transition flex items-center space-x-2"
-                >
-                  <Wallet className="w-5 h-5" />
-                  <span>Set Budgets</span>
+              <div className="flex flex-wrap gap-3">
+                <button onClick={() => openCategoryModal('expense')}
+                  className={`${glassCard} px-4 py-2.5 rounded-xl hover:border-blue-500/30 transition-all flex items-center space-x-2 text-sm font-medium ${textColor}`}>
+                  <Settings className="w-4 h-4" />
+                  <span>Categories</span>
                 </button>
-                <button
-                  onClick={() => openCategoryModal('expense')}
-                  className="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>Manage Categories</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setTransactionForm({ 
-                      ...transactionForm, 
-                      type: 'expense', 
-                      category: expenseCategories[0] 
-                    });
-                    setShowTransactionForm(true);
-                  }}
-                  className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition flex items-center space-x-2"
-                >
-                  <Plus className="w-5 h-5" />
+                <button onClick={() => { setTransactionForm({ ...transactionForm, type: 'expense', category: expenseCategories[0] }); setShowTransactionForm(true); }}
+                  className="bg-gradient-to-r from-red-500 to-red-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-red-500/25 transition-all flex items-center space-x-2 text-sm font-medium">
+                  <Plus className="w-4 h-4" />
                   <span>Add Expense</span>
                 </button>
               </div>
             </div>
 
-            {/* Budget Progress Bars */}
-            {Object.keys(customBudgets).length > 0 && (
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                <h3 className={`text-xl font-bold mb-4 ${textColor}`}>Budget Tracking</h3>
-                <div className="space-y-4">
-                  {Object.entries(customBudgets).map(([category, budgetLimit]) => {
-                    const spent = expenseTransactions
-                      .filter(t => t.category === category)
-                      .reduce((sum, t) => sum + t.amount, 0);
-                    const percentage = (spent / budgetLimit) * 100;
-                    const isOverBudget = spent > budgetLimit;
-                    
-                    return (
-                      <div key={category}>
-                        <div className="flex justify-between mb-2">
-                          <span className={`font-medium ${textColor}`}>{category}</span>
-                          <span className={`font-semibold ${isOverBudget ? 'text-red-500' : 'text-green-500'}`}>
-                            {currencySymbol}{spent.toFixed(2)} / {currencySymbol}{budgetLimit.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                          <div
-                            className={`h-3 rounded-full transition-all ${
-                              isOverBudget ? 'bg-red-500' : 'bg-green-500'
-                            }`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                        {isOverBudget && (
-                          <p className="text-xs text-red-500 mt-1">
-                            ⚠️ Over budget by {currencySymbol}{(spent - budgetLimit).toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {expenseTransactions.length === 0 ? (
-              <div className={`${cardBg} border ${borderColor} rounded-2xl p-12 text-center`}>
-                <TrendingDown className={`w-16 h-16 mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
-                <p className={`text-xl ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>No expenses recorded yet</p>
-                <button
-                  onClick={() => {
-                    setTransactionForm({ ...transactionForm, type: 'expense' });
-                    setShowTransactionForm(true);
-                  }}
-                  className="mt-4 bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition"
-                >
+              <div className={`${glassCard} rounded-2xl p-12 text-center`}>
+                <div className="w-20 h-20 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <TrendingDown className="w-10 h-10 text-red-400" />
+                </div>
+                <h3 className={`text-xl font-bold ${textColor} mb-2`}>No Expenses Yet</h3>
+                <p className={`${textMuted} mb-6`}>Start tracking your spending</p>
+                <button onClick={() => { setTransactionForm({ ...transactionForm, type: 'expense' }); setShowTransactionForm(true); }}
+                  className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-medium">
                   Add Your First Expense
                 </button>
               </div>
             ) : (
-              <div className={`${cardBg} border ${borderColor} rounded-2xl overflow-hidden`}>
+              <div className={`${glassCard} rounded-2xl overflow-hidden`}>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className={inputBg}>
+                    <thead className={theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}>
                       <tr>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Date</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Description</th>
-                        <th className={`px-6 py-4 text-left ${textColor}`}>Category</th>
-                        <th className={`px-6 py-4 text-right ${textColor}`}>Amount</th>
-                        <th className={`px-6 py-4 text-center ${textColor}`}>Actions</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Date</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Description</th>
+                        <th className={`px-6 py-4 text-left text-sm font-semibold ${textColor}`}>Category</th>
+                        <th className={`px-6 py-4 text-right text-sm font-semibold ${textColor}`}>Amount</th>
+                        <th className={`px-6 py-4 text-center text-sm font-semibold ${textColor}`}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {expenseTransactions.map(t => (
-                        <tr key={t.id} className={`border-t ${borderColor}`}>
-                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.date}</td>
-                          <td className={`px-6 py-4 ${textColor}`}>{t.label}</td>
-                          <td className={`px-6 py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.category}</td>
-                          <td className="px-6 py-4 text-right font-bold text-red-500">
-                            -{currencySymbol}{t.amount.toFixed(2)}
+                        <tr key={t.id} className={`border-t ${borderColor} ${hoverBg} transition-colors`}>
+                          <td className={`px-6 py-4 text-sm ${textMuted}`}>{t.date}</td>
+                          <td className={`px-6 py-4 text-sm font-medium ${textColor}`}>{t.label}</td>
+                          <td className={`px-6 py-4 text-sm`}>
+                            <span className="bg-red-500/10 text-red-400 px-3 py-1 rounded-lg text-xs font-medium">{t.category}</span>
                           </td>
+                          <td className="px-6 py-4 text-right font-bold text-red-400">-{currencySymbol}{t.amount.toFixed(2)}</td>
                           <td className="px-6 py-4 text-center">
-                            <button
-                              onClick={() => deleteTransaction(t.id)}
-                              className="text-red-500 hover:text-red-600"
-                            >
-                              <X className="w-5 h-5" />
+                            <button onClick={() => deleteTransaction(t.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-lg transition-all">
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </td>
                         </tr>
@@ -1670,42 +1236,68 @@ User Question: ${message}`;
         {/* INVESTMENTS PAGE */}
         {currentPage === 'investments' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className={`text-3xl font-bold ${textColor}`}>Investment Portfolio</h1>
-              <button
-                onClick={() => setShowInvestmentForm(true)}
-                className="bg-emerald-500 text-white px-6 py-3 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2"
-              >
-                <Plus className="w-5 h-5" />
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className={`text-3xl font-bold ${textColor}`}>Investment Portfolio</h1>
+                <p className={`${textMuted} mt-1`}>Total Invested: <span className="text-purple-400 font-semibold">{currencySymbol}{totalInvested.toFixed(2)}</span></p>
+              </div>
+              <button onClick={() => setShowInvestmentForm(true)}
+                className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center space-x-2 text-sm font-medium">
+                <Plus className="w-4 h-4" />
                 <span>Add Investment</span>
               </button>
             </div>
 
-            {investments.length > 0 && (
-              <div className="grid md:grid-cols-2 gap-6">
+            {investments.length === 0 ? (
+              <div className={`${glassCard} rounded-2xl p-12 text-center`}>
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <Briefcase className="w-10 h-10 text-purple-400" />
+                </div>
+                <h3 className={`text-xl font-bold ${textColor} mb-2`}>No Investments Yet</h3>
+                <p className={`${textMuted} mb-6`}>Start building your portfolio</p>
+                <button onClick={() => setShowInvestmentForm(true)}
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-medium">
+                  Add Your First Investment
+                </button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {investments.map(inv => (
-                  <div key={inv.id} className={`${cardBg} border ${borderColor} rounded-2xl p-6`}>
-                    <h3 className={`text-xl font-bold mb-4 ${textColor}`}>{inv.label}</h3>
-                    <div className="space-y-2">
+                  <div key={inv.id} className={`${glassCard} rounded-2xl p-6 hover:border-purple-500/30 transition-all group`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`text-xs font-medium px-3 py-1 rounded-lg ${
+                        inv.type === 'sip' ? 'bg-purple-500/20 text-purple-400' :
+                        inv.type === 'stocks' ? 'bg-blue-500/20 text-blue-400' :
+                        inv.type === 'crypto' ? 'bg-orange-500/20 text-orange-400' :
+                        'bg-emerald-500/20 text-emerald-400'
+                      }`}>{inv.type?.toUpperCase()}</span>
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Briefcase className="w-5 h-5 text-purple-400" />
+                      </div>
+                    </div>
+                    <h3 className={`text-lg font-bold ${textColor} mb-4`}>{inv.label}</h3>
+                    <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Principal</span>
-                        <span className={textColor}>{currencySymbol}{inv.amount.toFixed(2)}</span>
+                        <span className={`text-sm ${textMuted}`}>Principal</span>
+                        <span className={`text-sm font-semibold ${textColor}`}>{currencySymbol}{inv.amount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Duration</span>
-                        <span className={textColor}>{inv.duration} months</span>
+                        <span className={`text-sm ${textMuted}`}>Duration</span>
+                        <span className={`text-sm font-semibold ${textColor}`}>{inv.duration} months</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Return Rate</span>
-                        <span className={textColor}>{inv.returnRate}%</span>
+                        <span className={`text-sm ${textMuted}`}>Return Rate</span>
+                        <span className={`text-sm font-semibold ${textColor}`}>{inv.returnRate}%</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Nominal Return</span>
-                        <span className="text-green-500 font-bold">{currencySymbol}{inv.nominalReturn}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Real Return (inflation adj.)</span>
-                        <span className="text-blue-500 font-bold">{currencySymbol}{inv.realReturn}</span>
+                      <div className={`pt-3 border-t ${borderColor}`}>
+                        <div className="flex justify-between">
+                          <span className={`text-sm ${textMuted}`}>Expected Return</span>
+                          <span className="text-sm font-bold text-emerald-400">+{currencySymbol}{inv.nominalGain}</span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className={`text-sm ${textMuted}`}>Final Value</span>
+                          <span className="text-lg font-bold text-purple-400">{currencySymbol}{inv.nominalReturn}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1718,170 +1310,114 @@ User Question: ${message}`;
         {/* SETTINGS PAGE */}
         {currentPage === 'settings' && (
           <div className="space-y-6">
-            {/* Greeting */}
-            <div className="flex items-center justify-between">
-              <h1 className={`text-3xl font-bold ${textColor}`}>
-                Hi, {userData?.username || currentUser?.displayName || 'User'}! 👋
-              </h1>
-            </div>
+            <h1 className={`text-3xl font-bold ${textColor}`}>Settings</h1>
             
-            <div className={`${cardBg} border ${borderColor} rounded-2xl p-6 space-y-6`}>
-              {/* Financial Overview Section */}
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Financial Overview</label>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-green-500`}>
-                    <p className="text-sm text-gray-500">Total Income</p>
-                    <p className={`text-2xl font-bold text-green-500`}>{currencySymbol}{totalIncome.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{incomeTransactions.length} transactions</p>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Account Info */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold ${textColor} mb-6 flex items-center space-x-2`}>
+                  <Settings className="w-5 h-5 text-emerald-400" />
+                  <span>Account Information</span>
+                </h3>
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                    <p className={`text-sm ${textMuted} mb-1`}>Username</p>
+                    <p className={`font-semibold ${textColor}`}>{userData?.username || currentUser?.displayName}</p>
                   </div>
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-red-500`}>
-                    <p className="text-sm text-gray-500">Total Expenses</p>
-                    <p className={`text-2xl font-bold text-red-500`}>{currencySymbol}{totalExpense.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{expenseTransactions.length} transactions</p>
-                  </div>
-                  <div className={`${inputBg} rounded-lg p-4 border-l-4 border-blue-500`}>
-                    <p className="text-sm text-gray-500">Total Investments</p>
-                    <p className={`text-2xl font-bold text-blue-500`}>{currencySymbol}{investments.reduce((sum, inv) => sum + inv.amount, 0).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{investments.length} investments</p>
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                    <p className={`text-sm ${textMuted} mb-1`}>Email</p>
+                    <p className={`font-semibold ${textColor}`}>{currentUser?.email}</p>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Currency</label>
-                <select
-                  value={currency}
-                  onChange={async (e) => {
-                    const newCurrency = e.target.value;
-                    const oldCurrency = currency;
-                    
-                    if (oldCurrency === newCurrency) return;
-                    
-                    const rate = getConversionRate(oldCurrency, newCurrency);
-                    const confirmMsg = `Convert all amounts from ${oldCurrency} to ${newCurrency}?\n\nRate: 1 ${oldCurrency} = ${rate.toFixed(4)} ${newCurrency}\n\nThis will update ALL transactions and investments.`;
-                    
-                    if (confirm(confirmMsg)) {
-                      try {
-                        // Convert ALL transactions
-                        const convertedTx = convertAllTransactions(transactions, oldCurrency, newCurrency);
-                        setTransactions(convertedTx);
-                        
-                        // Convert ALL investments
-                        const convertedInv = convertAllInvestments(investments, oldCurrency, newCurrency);
-                        setInvestments(convertedInv);
-                        
-                        // Update currency state
-                        setCurrency(newCurrency);
-                        setPreviousCurrency(newCurrency);
-                        
-                        // Save to Firebase
-                        await updateUserData(currentUser.uid, { currency: newCurrency });
-                        
-                        alert(`✅ Converted! All amounts changed from ${oldCurrency} to ${newCurrency}`);
-                      } catch (error) {
-                        console.error('Conversion error:', error);
-                        alert('Error converting currency');
-                      }
-                    }
-                  }}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  {currencies.map(curr => (
-                    <option key={curr.code} value={curr.code}>
-                      {curr.symbol} {curr.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Theme</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setTheme('light')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      theme === 'light'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <Sun className="w-6 h-6 mx-auto" />
-                    <p className="mt-2">Light</p>
-                  </button>
-                  <button
-                    onClick={() => setTheme('dark')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      theme === 'dark'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <Moon className="w-6 h-6 mx-auto" />
-                    <p className="mt-2">Dark</p>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>View Mode</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setViewMode('classic')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      viewMode === 'classic'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <div className="text-2xl mx-auto mb-2">📋</div>
-                    <p className="font-medium">Classic</p>
-                    <p className="text-xs text-gray-500 mt-1">Simple layout</p>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('modern')}
-                    className={`flex-1 py-3 rounded-lg border-2 transition ${
-                      viewMode === 'modern'
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : `${borderColor} ${hoverBg}`
-                    }`}
-                  >
-                    <div className="text-2xl mx-auto mb-2">✨</div>
-                    <p className="font-medium">Modern</p>
-                    <p className="text-xs text-gray-500 mt-1">Enhanced visuals</p>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Account Information</label>
-                <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
-                  <p className={textColor}><span className="font-medium">Username:</span> {userData?.username || currentUser?.displayName}</p>
-                  <p className={textColor}><span className="font-medium">Email:</span> {currentUser?.email}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>AI Assistant Status</label>
-                <div className={`${inputBg} rounded-lg p-4 space-y-2`}>
-                  <div className="flex items-center space-x-2">
-                    {groqApiKey ? (
-                      <>
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <p className="text-green-500 font-medium">Active - API Key Configured ✓</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <p className="text-red-500 font-medium">Inactive - API Key Missing ✗</p>
-                      </>
-                    )}
+              {/* Preferences */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold ${textColor} mb-6 flex items-center space-x-2`}>
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  <span>Preferences</span>
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Currency</label>
+                    <select value={currency}
+                      onChange={async (e) => {
+                        const newCurrency = e.target.value;
+                        if (currency === newCurrency) return;
+                        const rate = getConversionRate(currency, newCurrency);
+                        if (confirm(`Convert all amounts to ${newCurrency}? (Rate: 1 ${currency} = ${rate.toFixed(4)} ${newCurrency})`)) {
+                          const convertedTx = convertAllTransactions(transactions, currency, newCurrency);
+                          setTransactions(convertedTx);
+                          const convertedInv = convertAllInvestments(investments, currency, newCurrency);
+                          setInvestments(convertedInv);
+                          setCurrency(newCurrency);
+                          await updateUserData(currentUser.uid, { currency: newCurrency });
+                        }
+                      }}
+                      className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}>
+                      {currencies.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.name}</option>)}
+                    </select>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {groqApiKey 
-                      ? 'Your AI assistant is ready to help with financial advice!' 
-                      : 'Environment variable VITE_GROQ_API_KEY not found. Please set it in Netlify dashboard.'}
+                  <div>
+                    <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Theme</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => setTheme('light')}
+                        className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center ${theme === 'light' ? 'border-emerald-500 bg-emerald-500/10' : `${borderColor} ${hoverBg}`}`}>
+                        <Sun className={`w-6 h-6 mb-2 ${theme === 'light' ? 'text-emerald-400' : textMuted}`} />
+                        <span className={`text-sm font-medium ${textColor}`}>Light</span>
+                      </button>
+                      <button onClick={() => setTheme('dark')}
+                        className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center ${theme === 'dark' ? 'border-emerald-500 bg-emerald-500/10' : `${borderColor} ${hoverBg}`}`}>
+                        <Moon className={`w-6 h-6 mb-2 ${theme === 'dark' ? 'text-emerald-400' : textMuted}`} />
+                        <span className={`text-sm font-medium ${textColor}`}>Dark</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Status */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold ${textColor} mb-6 flex items-center space-x-2`}>
+                  <Sparkles className="w-5 h-5 text-pink-400" />
+                  <span>AI Assistant Status</span>
+                </h3>
+                <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-3 h-3 rounded-full ${groqApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    <span className={`font-medium ${groqApiKey ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {groqApiKey ? 'Active & Ready' : 'Not Configured'}
+                    </span>
+                  </div>
+                  <p className={`text-sm ${textMuted} mt-2`}>
+                    {groqApiKey ? 'Your AI assistant is ready to help!' : 'API key not found'}
                   </p>
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div className={`${glassCard} rounded-2xl p-6`}>
+                <h3 className={`text-lg font-bold ${textColor} mb-6 flex items-center space-x-2`}>
+                  <TrendingUp className="w-5 h-5 text-blue-400" />
+                  <span>Quick Stats</span>
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} text-center`}>
+                    <p className="text-2xl font-bold text-emerald-400">{incomeTransactions.length}</p>
+                    <p className={`text-sm ${textMuted}`}>Income Records</p>
+                  </div>
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} text-center`}>
+                    <p className="text-2xl font-bold text-red-400">{expenseTransactions.length}</p>
+                    <p className={`text-sm ${textMuted}`}>Expense Records</p>
+                  </div>
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} text-center`}>
+                    <p className="text-2xl font-bold text-purple-400">{investments.length}</p>
+                    <p className={`text-sm ${textMuted}`}>Investments</p>
+                  </div>
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} text-center`}>
+                    <p className="text-2xl font-bold text-blue-400">{savingsRate}%</p>
+                    <p className={`text-sm ${textMuted}`}>Savings Rate</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1889,96 +1425,141 @@ User Question: ${message}`;
         )}
       </div>
 
+
       {/* Transaction Form Modal */}
       {showTransactionForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className={`${glassCard} rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className={`text-2xl font-bold ${textColor}`}>
                 Add {transactionForm.type === 'income' ? 'Income' : 'Expense'}
               </h2>
-              <button onClick={() => setShowTransactionForm(false)} className={hoverBg + ' p-2 rounded-lg'}>
+              <button onClick={() => setShowTransactionForm(false)} className={`${hoverBg} p-2 rounded-xl`}>
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Category</label>
-                <select
-                  value={transactionForm.category}
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Category</label>
+                <select value={transactionForm.category}
                   onChange={(e) => setTransactionForm({...transactionForm, category: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  {(transactionForm.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}>
+                  {(transactionForm.type === 'income' ? incomeCategories : expenseCategories).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Amount</label>
-                <input
-                  type="number"
-                  value={transactionForm.amount}
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Amount</label>
+                <input type="number" value={transactionForm.amount}
                   onChange={(e) => setTransactionForm({...transactionForm, amount: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="0.00"
-                  step="0.01"
-                />
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}
+                  placeholder="0.00" step="0.01" />
               </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Description</label>
-                <input
-                  type="text"
-                  value={transactionForm.label}
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Description</label>
+                <input type="text" value={transactionForm.label}
                   onChange={(e) => setTransactionForm({...transactionForm, label: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="Transaction description"
-                />
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}
+                  placeholder="What was this for?" />
               </div>
 
               <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Date</label>
-                <input
-                  type="date"
-                  value={transactionForm.date}
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Date</label>
+                <input type="date" value={transactionForm.date}
                   onChange={(e) => setTransactionForm({...transactionForm, date: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                />
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`} />
               </div>
 
-              {transactionForm.type === 'expense' && (
-                <div>
-                  <label className={`block mb-2 font-medium ${textColor}`}>Upload Receipt (Optional)</label>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={handleReceiptUpload}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Accepted: JPG, PNG, WEBP (Max 5MB)</p>
-                  {transactionForm.receiptImage && (
-                    <div className="mt-2">
-                      <img src={transactionForm.receiptImage} alt="Receipt" className="w-full rounded-lg" />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={() => setShowTransactionForm(false)}
-                  className={`flex-1 ${hoverBg} py-3 rounded-lg transition`}
-                >
+              <div className="flex space-x-3 pt-4">
+                <button onClick={() => setShowTransactionForm(false)}
+                  className={`flex-1 ${hoverBg} py-3 rounded-xl transition-all font-medium border ${borderColor}`}>
                   Cancel
                 </button>
-                <button
-                  onClick={addTransaction}
-                  className={`flex-1 ${transactionForm.type === 'income' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'} text-white py-3 rounded-lg transition`}
-                >
+                <button onClick={addTransaction}
+                  className={`flex-1 py-3 rounded-xl transition-all font-medium text-white ${
+                    transactionForm.type === 'income' 
+                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:shadow-emerald-500/25' 
+                      : 'bg-gradient-to-r from-red-500 to-red-600 hover:shadow-lg hover:shadow-red-500/25'
+                  }`}>
                   Add {transactionForm.type === 'income' ? 'Income' : 'Expense'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Investment Form Modal */}
+      {showInvestmentForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className={`${glassCard} rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`text-2xl font-bold ${textColor}`}>Add Investment</h2>
+              <button onClick={() => setShowInvestmentForm(false)} className={`${hoverBg} p-2 rounded-xl`}>
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Investment Type</label>
+                <select value={investmentForm.type}
+                  onChange={(e) => setInvestmentForm({...investmentForm, type: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`}>
+                  {['sip', 'stocks', 'crypto', 'bonds', 'fd', 'real estate', 'other'].map(t => 
+                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Investment Name</label>
+                <input type="text" value={investmentForm.label}
+                  onChange={(e) => setInvestmentForm({...investmentForm, label: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`}
+                  placeholder="e.g., Nifty 50 Index Fund" />
+              </div>
+
+              <div>
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Amount ({currencySymbol})</label>
+                <input type="number" value={investmentForm.amount}
+                  onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`}
+                  placeholder="0.00" step="0.01" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Duration (months)</label>
+                  <input type="number" value={investmentForm.duration}
+                    onChange={(e) => setInvestmentForm({...investmentForm, duration: e.target.value})}
+                    className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`} />
+                </div>
+                <div>
+                  <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Expected Return (%)</label>
+                  <input type="number" value={investmentForm.returnRate}
+                    onChange={(e) => setInvestmentForm({...investmentForm, returnRate: e.target.value})}
+                    className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`} />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block mb-2 text-sm font-medium ${textMuted}`}>Inflation Rate (%)</label>
+                <input type="number" value={investmentForm.inflationRate}
+                  onChange={(e) => setInvestmentForm({...investmentForm, inflationRate: e.target.value})}
+                  className={`w-full ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none transition-all`} />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button onClick={() => setShowInvestmentForm(false)}
+                  className={`flex-1 ${hoverBg} py-3 rounded-xl transition-all font-medium border ${borderColor}`}>
+                  Cancel
+                </button>
+                <button onClick={addInvestment}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all font-medium">
+                  Add Investment
                 </button>
               </div>
             </div>
@@ -1988,422 +1569,111 @@ User Question: ${message}`;
 
       {/* Category Management Modal */}
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className={`${glassCard} rounded-3xl p-8 max-w-md w-full`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className={`text-2xl font-bold ${textColor}`}>
-                Manage {categoryModalType === 'income' ? 'Income' : 'Expense'} Categories
+                {categoryModalType === 'income' ? 'Income' : 'Expense'} Categories
               </h2>
-              <button onClick={() => setShowCategoryModal(false)} className={hoverBg + ' p-2 rounded-lg'}>
+              <button onClick={() => setShowCategoryModal(false)} className={`${hoverBg} p-2 rounded-xl`}>
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Add New Category</label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className={`flex-1 ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder="Category name"
-                  />
-                  <button
-                    onClick={addCategory}
-                    className="bg-emerald-500 text-white px-4 py-3 rounded-lg hover:bg-emerald-600 transition"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
+              <div className="flex space-x-3">
+                <input type="text" value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className={`flex-1 ${inputBg} ${textColor} border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all`}
+                  placeholder="New category name" />
+                <button onClick={addCategory}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-3 rounded-xl hover:shadow-lg transition-all">
+                  <Plus className="w-5 h-5" />
+                </button>
               </div>
 
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Custom Categories</label>
-                <div className="space-y-2">
-                  {(categoryModalType === 'income' ? 
-                    incomeCategories.filter(c => !defaultIncomeCategories.includes(c)) :
-                    expenseCategories.filter(c => !defaultExpenseCategories.includes(c))
-                  ).map(cat => (
-                    <div key={cat} className={`flex justify-between items-center p-3 ${inputBg} rounded-lg`}>
-                      <span className={textColor}>{cat}</span>
-                      <button
-                        onClick={() => removeCategory(cat)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {(categoryModalType === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                  <div key={cat} className={`flex items-center justify-between p-3 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                    <span className={`font-medium ${textColor}`}>{cat}</span>
+                    {!defaultIncomeCategories.includes(cat) && !defaultExpenseCategories.includes(cat) && (
+                      <button onClick={() => removeCategory(cat)} className="text-red-400 hover:text-red-300 p-1 rounded-lg hover:bg-red-500/10 transition-all">
+                        <X className="w-4 h-4" />
                       </button>
-                    </div>
-                  ))}
-                  {(categoryModalType === 'income' ? 
-                    incomeCategories.filter(c => !defaultIncomeCategories.includes(c)) :
-                    expenseCategories.filter(c => !defaultExpenseCategories.includes(c))
-                  ).length === 0 && (
-                    <p className={`text-center py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      No custom categories yet
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowCategoryModal(false)}
-                className={`w-full ${hoverBg} py-3 rounded-lg transition`}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Investment Form Modal */}
-      {showInvestmentForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold ${textColor}`}>Add Investment</h2>
-              <button onClick={() => setShowInvestmentForm(false)} className={hoverBg + ' p-2 rounded-lg'}>
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Investment Type</label>
-                <select
-                  value={investmentForm.type}
-                  onChange={(e) => setInvestmentForm({...investmentForm, type: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                >
-                  <option value="stocks">📈 Stocks</option>
-                  <option value="crypto">₿ Crypto</option>
-                  <option value="bonds">🏦 Bonds</option>
-                  <option value="sip">💰 SIP/Mutual Funds</option>
-                  <option value="real estate">🏠 Real Estate</option>
-                  <option value="fd">🏛️ Fixed Deposit</option>
-                  <option value="other">📊 Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Investment Name</label>
-                <input
-                  type="text"
-                  value={investmentForm.label}
-                  onChange={(e) => setInvestmentForm({...investmentForm, label: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="e.g., Mutual Fund, Stock"
-                />
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Principal Amount</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={investmentForm.amount}
-                    onChange={(e) => setInvestmentForm({...investmentForm, amount: e.target.value})}
-                    className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                  <div className="absolute right-3 top-3 text-sm text-gray-500">
-                    Available: {currencySymbol}{balance.toFixed(2)}
+                    )}
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Duration (months)</label>
-                <input
-                  type="number"
-                  value={investmentForm.duration}
-                  onChange={(e) => setInvestmentForm({...investmentForm, duration: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="12"
-                />
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Expected Return Rate (%)</label>
-                <input
-                  type="number"
-                  value={investmentForm.returnRate}
-                  onChange={(e) => setInvestmentForm({...investmentForm, returnRate: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="12"
-                  step="0.1"
-                />
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Inflation Rate (%)</label>
-                <input
-                  type="number"
-                  value={investmentForm.inflationRate}
-                  onChange={(e) => setInvestmentForm({...investmentForm, inflationRate: e.target.value})}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none`}
-                  placeholder="6"
-                  step="0.1"
-                />
-              </div>
-
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={() => setShowInvestmentForm(false)}
-                  className={`flex-1 ${hoverBg} py-3 rounded-lg transition`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addInvestment}
-                  className="flex-1 bg-emerald-500 text-white py-3 rounded-lg hover:bg-emerald-600 transition"
-                >
-                  Add Investment
-                </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* AI Assistant Modal */}
+      {/* AI Chat Panel */}
       {showAIChat && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${cardBg} border ${borderColor} rounded-2xl w-full max-w-4xl h-[600px] flex flex-col shadow-2xl`}>
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b ${borderColor}">
+        <div className="fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] z-50">
+          <div className={`${glassCard} rounded-3xl overflow-hidden shadow-2xl`}>
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <span className="text-3xl">🤖</span>
-                <div>
-                  <h2 className={`text-2xl font-bold ${textColor}`}>AI Financial Assistant</h2>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                    {aiMessages.length > 0 ? `${aiMessages.length} messages in conversation` : 'Chat or upload documents for analysis'}
-                  </p>
-                </div>
+                <Sparkles className="w-6 h-6 text-white" />
+                <span className="font-bold text-white">AI Financial Assistant</span>
               </div>
               <div className="flex items-center space-x-2">
-                {aiMessages.length > 0 && (
-                  <button
-                    onClick={startNewConversation}
-                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition flex items-center space-x-2"
-                    title="Start new conversation"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">New Chat</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAIChat(false)}
-                  className={`${hoverBg} p-2 rounded-lg transition`}
-                  title="Close chat"
-                >
-                  <X className="w-6 h-6" />
+                <button onClick={startNewConversation} className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button onClick={() => setShowAIChat(false)} className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className={`h-80 overflow-y-auto p-4 space-y-3 ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
               {aiMessages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <span className="text-6xl mb-4">💬</span>
-                  <h3 className={`text-xl font-bold ${textColor} mb-2`}>How can I help you today?</h3>
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                    Ask me about your finances, upload receipts, or get budgeting advice!
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 mt-6 max-w-lg">
-                    <button
-                      onClick={() => setAiInput("Analyze my spending patterns")}
-                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
-                    >
-                      <span className="text-2xl mb-2 block">📊</span>
-                      <p className={`font-semibold ${textColor}`}>Analyze Spending</p>
-                    </button>
-                    <button
-                      onClick={() => setAiInput("Give me budgeting advice")}
-                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
-                    >
-                      <span className="text-2xl mb-2 block">💡</span>
-                      <p className={`font-semibold ${textColor}`}>Budget Advice</p>
-                    </button>
-                    <button
-                      onClick={() => setAiInput("Help me plan my savings")}
-                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
-                    >
-                      <span className="text-2xl mb-2 block">🎯</span>
-                      <p className={`font-semibold ${textColor}`}>Savings Plan</p>
-                    </button>
-                    <button
-                      onClick={() => document.getElementById('ai-file-input').click()}
-                      className={`${cardBg} border ${borderColor} p-4 rounded-lg ${hoverBg} transition text-left`}
-                    >
-                      <span className="text-2xl mb-2 block">📄</span>
-                      <p className={`font-semibold ${textColor}`}>Upload Document</p>
-                    </button>
-                  </div>
+                <div className={`text-center py-8 ${textMuted}`}>
+                  <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>Ask me anything about your finances!</p>
                 </div>
               ) : (
-                aiMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-2xl p-4 ${
-                        msg.role === 'user'
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                          : `${cardBg} border ${borderColor} ${textColor}`
-                      }`}
-                    >
-                      <div className="flex items-start space-x-2">
-                        <span className="text-xl">
-                          {msg.role === 'user' ? '👤' : '🤖'}
-                        </span>
-                        <div className="flex-1">
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                          <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-purple-100' : 'text-gray-500'}`}>
-                            {new Date(msg.timestamp).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
+                aiMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-none'
+                        : msg.error
+                          ? 'bg-red-500/10 text-red-400 rounded-bl-none'
+                          : `${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} ${textColor} rounded-bl-none`
+                    }`}>
+                      {msg.content}
                     </div>
                   </div>
                 ))
               )}
               {aiLoading && (
                 <div className="flex justify-start">
-                  <div className={`${cardBg} border ${borderColor} rounded-2xl p-4`}>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xl">🤖</span>
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
+                  <div className={`p-3 rounded-2xl rounded-bl-none ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-200"></div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Input Area */}
-            <div className={`border-t ${borderColor} p-4`}>
-              <input
-                type="file"
-                id="ai-file-input"
-                accept="image/*,application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleFileSelected(e.target.files[0]);
-                    e.target.value = ''; // Reset input
-                  }
-                }}
-              />
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleFileUploadForAI}
-                  className={`bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 p-3 rounded-lg transition flex items-center space-x-2`}
-                  disabled={aiLoading}
-                  title="Upload receipt or document"
-                >
-                  <Upload className="w-5 h-5" />
-                  <span className="hidden sm:inline text-sm font-medium">Upload</span>
-                </button>
-                <input
-                  type="text"
-                  value={aiInput}
+            <div className={`p-4 border-t ${borderColor}`}>
+              <div className="flex space-x-2">
+                <input type="text" value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !aiLoading) {
-                      handleAIChat(aiInput);
-                    }
-                  }}
-                  placeholder="Ask about your finances or upload a document..."
-                  className={`flex-1 ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
-                  disabled={aiLoading}
-                />
-                <button
-                  onClick={() => handleAIChat(aiInput)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAIChat(aiInput)}
+                  className={`flex-1 ${inputBg} ${textColor} border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm`}
+                  placeholder="Ask about your finances..."
+                  disabled={aiLoading} />
+                <button onClick={() => handleAIChat(aiInput)}
                   disabled={aiLoading || !aiInput.trim()}
-                  className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2.5 rounded-xl hover:shadow-lg transition-all disabled:opacity-50">
                   <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Budget Modal */}
-      {showBudgetModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className={`${cardBg} rounded-2xl p-6 max-w-md w-full`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-2xl font-bold ${textColor}`}>Set Category Budget</h2>
-              <button onClick={() => {
-                setShowBudgetModal(false);
-                setBudgetCategory('');
-                setBudgetAmount('');
-              }} className={hoverBg + ' p-2 rounded-lg'}>
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Category</label>
-                <select
-                  value={budgetCategory}
-                  onChange={(e) => setBudgetCategory(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
-                >
-                  <option value="">Select a category</option>
-                  {expenseCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`block mb-2 font-medium ${textColor}`}>Monthly Budget Limit</label>
-                <input
-                  type="number"
-                  value={budgetAmount}
-                  onChange={(e) => setBudgetAmount(e.target.value)}
-                  className={`w-full ${inputBg} ${textColor} border ${borderColor} rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 outline-none`}
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={() => {
-                    setShowBudgetModal(false);
-                    setBudgetCategory('');
-                    setBudgetAmount('');
-                  }}
-                  className={`flex-1 ${hoverBg} py-3 rounded-lg transition`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (budgetCategory && budgetAmount) {
-                      setCustomBudgets({...customBudgets, [budgetCategory]: parseFloat(budgetAmount)});
-                      setShowBudgetModal(false);
-                      setBudgetCategory('');
-                      setBudgetAmount('');
-                    }
-                  }}
-                  className="flex-1 bg-purple-500 text-white py-3 rounded-lg hover:bg-purple-600 transition"
-                >
-                  Set Budget
                 </button>
               </div>
             </div>
