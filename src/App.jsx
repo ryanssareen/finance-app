@@ -1019,32 +1019,61 @@ export default function App() {
 
             {/* Budget Overview & Recent Transactions */}
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* Quick Budget Overview */}
+              {/* RGB Budget Overview - Donut Chart */}
               <div className={`${glassCard} rounded-2xl p-6`}>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className={`text-lg font-bold ${textColor}`}>Budget Overview</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-bold ${textColor}`}>Budget Allocation (RGB)</h3>
                   <button onClick={() => { setCurrentPage('expense'); }} className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
                     Manage →
                   </button>
                 </div>
                 {totalIncome > 0 ? (
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Needs', value: expenseTransactions.filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category)).reduce((s, t) => s + t.amount, 0), color: 'blue', max: totalIncome * 0.5 },
-                      { label: 'Wants', value: expenseTransactions.filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category)).reduce((s, t) => s + t.amount, 0), color: 'pink', max: totalIncome * 0.3 },
-                      { label: 'Savings', value: Math.max(0, balance), color: 'emerald', max: totalIncome * 0.2 }
-                    ].map((item, i) => (
-                      <div key={i}>
-                        <div className="flex justify-between mb-2">
-                          <span className={`text-sm font-medium ${textColor}`}>{item.label}</span>
-                          <span className={`text-sm font-semibold text-${item.color}-400`}>{currencySymbol}{item.value.toFixed(2)}</span>
-                        </div>
-                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                          <div className={`h-2 rounded-full bg-gradient-to-r ${item.color === 'blue' ? 'from-blue-500 to-cyan-500' : item.color === 'pink' ? 'from-pink-500 to-rose-500' : 'from-emerald-500 to-green-500'} transition-all duration-500`}
-                            style={{ width: `${Math.min((item.value / item.max) * 100, 100)}%` }} />
-                        </div>
+                  <div className="flex flex-col items-center">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { 
+                              name: 'Needs (Blue)', 
+                              value: expenseTransactions.filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category)).reduce((s, t) => s + t.amount, 0) || 0.01
+                            },
+                            { 
+                              name: 'Wants (Red)', 
+                              value: expenseTransactions.filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category)).reduce((s, t) => s + t.amount, 0) || 0.01
+                            },
+                            { 
+                              name: 'Savings (Green)', 
+                              value: Math.max(0.01, balance)
+                            }
+                          ]}
+                          cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value"
+                          stroke={theme === 'dark' ? '#1f2937' : '#ffffff'} strokeWidth={3}
+                        >
+                          <Cell fill="#3b82f6" /> {/* Blue - Needs */}
+                          <Cell fill="#ef4444" /> {/* Red - Wants */}
+                          <Cell fill="#22c55e" /> {/* Green - Savings */}
+                        </Pie>
+                        <Tooltip formatter={(v) => `${currencySymbol}${v.toFixed(2)}`} contentStyle={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#fff', border: 'none', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Legend */}
+                    <div className="grid grid-cols-3 gap-3 w-full mt-2">
+                      <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} text-center`}>
+                        <div className="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-1"></div>
+                        <p className="text-xs font-medium text-blue-400">Needs</p>
+                        <p className={`text-sm font-bold ${textColor}`}>{currencySymbol}{expenseTransactions.filter(t => ['Food', 'Rent', 'Transportation', 'Healthcare', 'Utilities'].includes(t.category)).reduce((s, t) => s + t.amount, 0).toFixed(0)}</p>
                       </div>
-                    ))}
+                      <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-red-500/10' : 'bg-red-50'} text-center`}>
+                        <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-1"></div>
+                        <p className="text-xs font-medium text-red-400">Wants</p>
+                        <p className={`text-sm font-bold ${textColor}`}>{currencySymbol}{expenseTransactions.filter(t => ['Entertainment', 'Shopping', 'Other'].includes(t.category)).reduce((s, t) => s + t.amount, 0).toFixed(0)}</p>
+                      </div>
+                      <div className={`p-3 rounded-xl ${theme === 'dark' ? 'bg-green-500/10' : 'bg-green-50'} text-center`}>
+                        <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
+                        <p className="text-xs font-medium text-green-400">Savings</p>
+                        <p className={`text-sm font-bold ${textColor}`}>{currencySymbol}{Math.max(0, balance).toFixed(0)}</p>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className={`flex flex-col items-center justify-center py-8 ${textMuted}`}>
